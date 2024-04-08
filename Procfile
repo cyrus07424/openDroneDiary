@@ -1,0 +1,1 @@
+web: ./build/install/open-drone-diary/bin/open-drone-diary
