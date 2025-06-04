@@ -22,7 +22,7 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.logback.classic)
-    implementation("io.ktor:ktor-server-html-builder:2.3.8")
+    implementation("io.ktor:ktor-server-html-builder:3.1.3")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
