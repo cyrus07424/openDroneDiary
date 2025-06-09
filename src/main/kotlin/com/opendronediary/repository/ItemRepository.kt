@@ -6,9 +6,9 @@ class ItemRepository {
     private val items = mutableListOf<Item>()
     private var nextId = 1
 
-    fun getAll(): List<Item> = items
+    fun getAllByUserId(userId: Int): List<Item> = items.filter { it.userId == userId }
 
-    fun getById(id: Int): Item? = items.find { it.id == id }
+    fun getByIdAndUserId(id: Int, userId: Int): Item? = items.find { it.id == id && it.userId == userId }
 
     fun add(item: Item): Item {
         val newItem = item.copy(id = nextId++)
@@ -16,13 +16,13 @@ class ItemRepository {
         return newItem
     }
 
-    fun update(id: Int, item: Item): Boolean {
-        val index = items.indexOfFirst { it.id == id }
+    fun update(id: Int, item: Item, userId: Int): Boolean {
+        val index = items.indexOfFirst { it.id == id && it.userId == userId }
         if (index == -1) return false
-        items[index] = item.copy(id = id)
+        items[index] = item.copy(id = id, userId = userId)
         return true
     }
 
-    fun delete(id: Int): Boolean = items.removeIf { it.id == id }
+    fun delete(id: Int, userId: Int): Boolean = items.removeIf { it.id == id && it.userId == userId }
 }
 
