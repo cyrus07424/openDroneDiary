@@ -48,7 +48,7 @@ fun Application.configureRouting() {
                                         if (session != null) {
                                             div(classes = "alert alert-success") { +"ログイン中: ${session.username}" }
                                             div(classes = "d-grid gap-2") {
-                                                a(href = "/items/ui", classes = "btn btn-primary") { +"飛行記録一覧へ" }
+                                                a(href = "/flightlogs/ui", classes = "btn btn-primary") { +"飛行記録一覧へ" }
                                                 a(href = "/logout", classes = "btn btn-outline-secondary") { +"ログアウト" }
                                             }
                                         } else {
@@ -261,8 +261,8 @@ fun Application.configureRouting() {
             call.respondRedirect("/")
         }
         
-        // Item CRUD - Authentication required
-        route("/items") {
+        // 飛行記録 CRUD - Authentication required
+        route("/flightlogs") {
             get {
                 val session = call.sessions.get<UserSession>()
                 if (session == null) {
@@ -301,7 +301,7 @@ fun Application.configureRouting() {
                     val pilotName = params["pilotName"] ?: ""
                     val issuesAndResponses = params["issuesAndResponses"]
                     val created = flightLogService.add(FlightLog(0, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId))
-                    call.respondRedirect("/items/ui")
+                    call.respondRedirect("/flightlogs/ui")
                 } else {
                     val flightLog = call.receive<FlightLog>()
                     val created = flightLogService.add(flightLog.copy(userId = session.userId))
@@ -336,8 +336,8 @@ fun Application.configureRouting() {
                 }
             }
         }
-        // Item UI (HTML画面) - Authentication required
-        route("/items/ui") {
+        // 飛行記録 UI (HTML画面) - Authentication required
+        route("/flightlogs/ui") {
             get {
                 val session = call.sessions.get<UserSession>()
                 if (session == null) {
@@ -392,8 +392,8 @@ fun Application.configureRouting() {
                                                                     td { +flightLog.flightDuration }
                                                                     td { +flightLog.pilotName }
                                                                     td(classes = "text-center") {
-                                                                        a(href = "/items/ui/${flightLog.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
-                                                                        form(action = "/items/ui/${flightLog.id}", method = FormMethod.post, classes = "d-inline") {
+                                                                        a(href = "/flightlogs/ui/${flightLog.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
+                                                                        form(action = "/flightlogs/ui/${flightLog.id}", method = FormMethod.post, classes = "d-inline") {
                                                                             hiddenInput { name = "_method"; value = "delete" }
                                                                             submitInput(classes = "btn btn-sm btn-outline-danger") { 
                                                                                 value = "削除"
@@ -415,7 +415,7 @@ fun Application.configureRouting() {
                                             h2(classes = "card-title mb-0") { +"新規飛行記録作成" }
                                         }
                                         div(classes = "card-body") {
-                                            form(action = "/items", method = FormMethod.post) {
+                                            form(action = "/flightlogs", method = FormMethod.post) {
                                                 div(classes = "row") {
                                                     div(classes = "col-md-6 mb-3") {
                                                         label(classes = "form-label") { +"飛行年月日" }
@@ -500,7 +500,7 @@ fun Application.configureRouting() {
                             div(classes = "container") {
                                 a(href = "/", classes = "navbar-brand") { +"🛩️ OpenDroneDiary" }
                                 div(classes = "navbar-nav ms-auto") {
-                                    a(href = "/items/ui", classes = "btn btn-outline-light btn-sm me-2") { +"一覧へ戻る" }
+                                    a(href = "/flightlogs/ui", classes = "btn btn-outline-light btn-sm me-2") { +"一覧へ戻る" }
                                     a(href = "/logout", classes = "btn btn-outline-light btn-sm") { +"ログアウト" }
                                 }
                             }
@@ -513,7 +513,7 @@ fun Application.configureRouting() {
                                             h1(classes = "card-title mb-0") { +"飛行記録編集" }
                                         }
                                         div(classes = "card-body") {
-                                            form(action = "/items/ui/${flightLog.id}", method = FormMethod.post) {
+                                            form(action = "/flightlogs/ui/${flightLog.id}", method = FormMethod.post) {
                                                 hiddenInput { name = "_method"; value = "put" }
                                                 div(classes = "row") {
                                                     div(classes = "col-md-6 mb-3") {
@@ -575,7 +575,7 @@ fun Application.configureRouting() {
                                                 }
                                             }
                                             hr()
-                                            form(action = "/items/ui/${flightLog.id}", method = FormMethod.post) {
+                                            form(action = "/flightlogs/ui/${flightLog.id}", method = FormMethod.post) {
                                                 hiddenInput { name = "_method"; value = "delete" }
                                                 div(classes = "d-grid") {
                                                     submitInput(classes = "btn btn-danger") { 
@@ -613,7 +613,7 @@ fun Application.configureRouting() {
                             val issuesAndResponses = params["issuesAndResponses"]
                             val updated = flightLogService.update(id, FlightLog(id, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId), session.userId)
                             if (updated) {
-                                call.respondRedirect("/items/ui")
+                                call.respondRedirect("/flightlogs/ui")
                             } else {
                                 call.respond(HttpStatusCode.NotFound)
                             }
@@ -623,7 +623,7 @@ fun Application.configureRouting() {
                     }
                     "delete" -> {
                         if (id != null && flightLogService.delete(id, session.userId)) {
-                            call.respondRedirect("/items/ui")
+                            call.respondRedirect("/flightlogs/ui")
                         } else {
                             call.respond(HttpStatusCode.NotFound)
                         }
@@ -648,7 +648,7 @@ fun Application.configureRouting() {
                     val pilotName = params["pilotName"] ?: ""
                     val issuesAndResponses = params["issuesAndResponses"]
                     val created = flightLogService.add(FlightLog(0, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId))
-                    call.respondRedirect("/items/ui")
+                    call.respondRedirect("/flightlogs/ui")
                 } else {
                     val flightLog = call.receive<FlightLog>()
                     val created = flightLogService.add(flightLog.copy(userId = session.userId))
