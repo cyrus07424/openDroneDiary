@@ -342,42 +342,98 @@ fun Application.configureRouting() {
                 }
                 val items = itemService.getAllByUserId(session.userId)
                 call.respondHtml {
-                    head {
-                        title { +"Item一覧" }
-                    }
+                    head { bootstrapHead("Item一覧") }
                     body {
-                        h1 { +"Item一覧 (${session.username})" }
-                        a(href = "/") { +"トップへ" }
-                        span { +" | " }
-                        a(href = "/logout") { +"ログアウト" }
-                        table {
-                            tr {
-                                th { +"ID" }
-                                th { +"名前" }
-                                th { +"説明" }
-                                th { +"操作" }
+                        nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
+                            div(classes = "container") {
+                                a(href = "/", classes = "navbar-brand") { +"🛩️ OpenDroneDiary" }
+                                div(classes = "navbar-nav ms-auto") {
+                                    span(classes = "navbar-text me-3") { +"ログイン中: ${session.username}" }
+                                    a(href = "/logout", classes = "btn btn-outline-light btn-sm") { +"ログアウト" }
+                                }
                             }
-                            items.forEach { item ->
-                                tr {
-                                    td { +item.id.toString() }
-                                    td { +item.name }
-                                    td { +(item.description ?: "") }
-                                    td {
-                                        a(href = "/items/ui/${item.id}") { +"編集" }
-                                        form(action = "/items/ui/${item.id}", method = FormMethod.post) {
-                                            attributes["style"] = "display:inline;"
-                                            hiddenInput { name = "_method"; value = "delete" }
-                                            submitInput { value = "削除" }
+                        }
+                        div(classes = "container mt-4") {
+                            div(classes = "row") {
+                                div(classes = "col-12") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header d-flex justify-content-between align-items-center") {
+                                            h1(classes = "card-title mb-0") { +"Item一覧" }
+                                            a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
+                                        }
+                                        div(classes = "card-body") {
+                                            if (items.isEmpty()) {
+                                                div(classes = "alert alert-info") { +"まだアイテムがありません。下のフォームから新規作成してください。" }
+                                            } else {
+                                                div(classes = "table-responsive") {
+                                                    table(classes = "table table-striped table-hover") {
+                                                        thead(classes = "table-dark") {
+                                                            tr {
+                                                                th { +"ID" }
+                                                                th { +"名前" }
+                                                                th { +"説明" }
+                                                                th(classes = "text-center") { +"操作" }
+                                                            }
+                                                        }
+                                                        tbody {
+                                                            items.forEach { item ->
+                                                                tr {
+                                                                    td { +item.id.toString() }
+                                                                    td { +item.name }
+                                                                    td { +(item.description ?: "") }
+                                                                    td(classes = "text-center") {
+                                                                        a(href = "/items/ui/${item.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
+                                                                        form(action = "/items/ui/${item.id}", method = FormMethod.post, classes = "d-inline") {
+                                                                            hiddenInput { name = "_method"; value = "delete" }
+                                                                            submitInput(classes = "btn btn-sm btn-outline-danger") { 
+                                                                                value = "削除"
+                                                                                attributes["onclick"] = "return confirm('本当に削除しますか？')"
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    div(classes = "card mt-4") {
+                                        div(classes = "card-header") {
+                                            h2(classes = "card-title mb-0") { +"新規作成" }
+                                        }
+                                        div(classes = "card-body") {
+                                            form(action = "/items", method = FormMethod.post) {
+                                                div(classes = "row") {
+                                                    div(classes = "col-md-4 mb-3") {
+                                                        label(classes = "form-label") { +"名前" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "name"
+                                                            placeholder = "アイテム名を入力してください"
+                                                            required = true
+                                                        }
+                                                    }
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"説明" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "description"
+                                                            placeholder = "説明を入力してください（任意）"
+                                                        }
+                                                    }
+                                                    div(classes = "col-md-2 mb-3") {
+                                                        label(classes = "form-label") { +"　" } // spacer
+                                                        div(classes = "d-grid") {
+                                                            submitInput(classes = "btn btn-success") { value = "追加" }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        h2 { +"新規作成" }
-                        form(action = "/items", method = FormMethod.post) {
-                            textInput { name = "name"; placeholder = "名前" }
-                            textInput { name = "description"; placeholder = "説明" }
-                            submitInput { value = "追加" }
                         }
                     }
                 }
@@ -395,20 +451,61 @@ fun Application.configureRouting() {
                     return@get
                 }
                 call.respondHtml {
-                    head { title { +"Item編集" } }
+                    head { bootstrapHead("Item編集") }
                     body {
-                        h1 { +"Item編集" }
-                        form(action = "/items/ui/${item.id}", method = FormMethod.post) {
-                            hiddenInput { name = "_method"; value = "put" }
-                            textInput { name = "name"; value = item.name }
-                            textInput { name = "description"; value = item.description ?: "" }
-                            submitInput { value = "更新" }
+                        nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
+                            div(classes = "container") {
+                                a(href = "/", classes = "navbar-brand") { +"🛩️ OpenDroneDiary" }
+                                div(classes = "navbar-nav ms-auto") {
+                                    a(href = "/items/ui", classes = "btn btn-outline-light btn-sm me-2") { +"一覧へ戻る" }
+                                    a(href = "/logout", classes = "btn btn-outline-light btn-sm") { +"ログアウト" }
+                                }
+                            }
                         }
-                        form(action = "/items/ui/${item.id}", method = FormMethod.post) {
-                            hiddenInput { name = "_method"; value = "delete" }
-                            submitInput { value = "削除" }
+                        div(classes = "container mt-4") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-8") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"Item編集" }
+                                        }
+                                        div(classes = "card-body") {
+                                            form(action = "/items/ui/${item.id}", method = FormMethod.post) {
+                                                hiddenInput { name = "_method"; value = "put" }
+                                                div(classes = "mb-3") {
+                                                    label(classes = "form-label") { +"名前" }
+                                                    textInput(classes = "form-control") { 
+                                                        name = "name"
+                                                        value = item.name
+                                                        required = true
+                                                    }
+                                                }
+                                                div(classes = "mb-3") {
+                                                    label(classes = "form-label") { +"説明" }
+                                                    textInput(classes = "form-control") { 
+                                                        name = "description"
+                                                        value = item.description ?: ""
+                                                    }
+                                                }
+                                                div(classes = "d-grid gap-2 d-md-block") {
+                                                    submitInput(classes = "btn btn-primary") { value = "更新" }
+                                                }
+                                            }
+                                            hr()
+                                            form(action = "/items/ui/${item.id}", method = FormMethod.post) {
+                                                hiddenInput { name = "_method"; value = "delete" }
+                                                div(classes = "d-grid") {
+                                                    submitInput(classes = "btn btn-danger") { 
+                                                        value = "削除"
+                                                        attributes["onclick"] = "return confirm('本当に削除しますか？')"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        a(href = "/items/ui") { +"一覧へ戻る" }
                     }
                 }
             }
