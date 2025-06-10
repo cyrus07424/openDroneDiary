@@ -6,12 +6,12 @@ import io.ktor.server.routing.*
 import io.ktor.server.request.*
 import io.ktor.server.sessions.*
 import io.ktor.http.*
-import com.opendronediary.model.Item
+import com.opendronediary.model.FlightLog
 import com.opendronediary.model.User
 import com.opendronediary.model.UserSession
-import com.opendronediary.repository.ItemRepository
+import com.opendronediary.repository.FlightLogRepository
 import com.opendronediary.repository.UserRepository
-import com.opendronediary.service.ItemService
+import com.opendronediary.service.FlightLogService
 import com.opendronediary.service.UserService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
@@ -26,8 +26,8 @@ fun HEAD.bootstrapHead(pageTitle: String) {
 }
 
 fun Application.configureRouting() {
-    val itemRepository = ItemRepository()
-    val itemService = ItemService(itemRepository)
+    val flightLogRepository = FlightLogRepository()
+    val flightLogService = FlightLogService(flightLogRepository)
     val userRepository = UserRepository()
     val userService = UserService(userRepository)
     
@@ -48,7 +48,7 @@ fun Application.configureRouting() {
                                         if (session != null) {
                                             div(classes = "alert alert-success") { +"ログイン中: ${session.username}" }
                                             div(classes = "d-grid gap-2") {
-                                                a(href = "/items/ui", classes = "btn btn-primary") { +"Item一覧へ" }
+                                                a(href = "/items/ui", classes = "btn btn-primary") { +"飛行記録一覧へ" }
                                                 a(href = "/logout", classes = "btn btn-outline-secondary") { +"ログアウト" }
                                             }
                                         } else {
@@ -269,7 +269,7 @@ fun Application.configureRouting() {
                     call.respond(HttpStatusCode.Unauthorized)
                     return@get
                 }
-                call.respond(itemService.getAllByUserId(session.userId))
+                call.respond(flightLogService.getAllByUserId(session.userId))
             }
             get("/{id}") {
                 val session = call.sessions.get<UserSession>()
@@ -278,9 +278,9 @@ fun Application.configureRouting() {
                     return@get
                 }
                 val id = call.parameters["id"]?.toIntOrNull()
-                val item = id?.let { itemService.getByIdAndUserId(it, session.userId) }
-                if (item != null) {
-                    call.respond(item)
+                val flightLog = id?.let { flightLogService.getByIdAndUserId(it, session.userId) }
+                if (flightLog != null) {
+                    call.respond(flightLog)
                 } else {
                     call.respond(HttpStatusCode.NotFound)
                 }
@@ -294,13 +294,17 @@ fun Application.configureRouting() {
                 val contentType = call.request.contentType()
                 if (contentType.match(ContentType.Application.FormUrlEncoded)) {
                     val params = call.receiveParameters()
-                    val name = params["name"] ?: ""
-                    val description = params["description"]
-                    val created = itemService.add(Item(0, name, description, session.userId))
+                    val flightDate = params["flightDate"] ?: ""
+                    val takeoffLandingLocation = params["takeoffLandingLocation"] ?: ""
+                    val takeoffLandingTime = params["takeoffLandingTime"] ?: ""
+                    val flightDuration = params["flightDuration"] ?: ""
+                    val pilotName = params["pilotName"] ?: ""
+                    val issuesAndResponses = params["issuesAndResponses"]
+                    val created = flightLogService.add(FlightLog(0, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId))
                     call.respondRedirect("/items/ui")
                 } else {
-                    val item = call.receive<Item>()
-                    val created = itemService.add(item.copy(userId = session.userId))
+                    val flightLog = call.receive<FlightLog>()
+                    val created = flightLogService.add(flightLog.copy(userId = session.userId))
                     call.respond(HttpStatusCode.Created, created)
                 }
             }
@@ -311,8 +315,8 @@ fun Application.configureRouting() {
                     return@put
                 }
                 val id = call.parameters["id"]?.toIntOrNull()
-                val item = call.receive<Item>()
-                if (id != null && itemService.update(id, item, session.userId)) {
+                val flightLog = call.receive<FlightLog>()
+                if (id != null && flightLogService.update(id, flightLog, session.userId)) {
                     call.respond(HttpStatusCode.OK)
                 } else {
                     call.respond(HttpStatusCode.NotFound)
@@ -325,7 +329,7 @@ fun Application.configureRouting() {
                     return@delete
                 }
                 val id = call.parameters["id"]?.toIntOrNull()
-                if (id != null && itemService.delete(id, session.userId)) {
+                if (id != null && flightLogService.delete(id, session.userId)) {
                     call.respond(HttpStatusCode.NoContent)
                 } else {
                     call.respond(HttpStatusCode.NotFound)
@@ -340,9 +344,9 @@ fun Application.configureRouting() {
                     call.respondRedirect("/login")
                     return@get
                 }
-                val items = itemService.getAllByUserId(session.userId)
+                val flightLogs = flightLogService.getAllByUserId(session.userId)
                 call.respondHtml {
-                    head { bootstrapHead("Item一覧") }
+                    head { bootstrapHead("飛行記録一覧") }
                     body {
                         nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
                             div(classes = "container") {
@@ -358,32 +362,38 @@ fun Application.configureRouting() {
                                 div(classes = "col-12") {
                                     div(classes = "card") {
                                         div(classes = "card-header d-flex justify-content-between align-items-center") {
-                                            h1(classes = "card-title mb-0") { +"Item一覧" }
+                                            h1(classes = "card-title mb-0") { +"飛行記録一覧" }
                                             a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
                                         }
                                         div(classes = "card-body") {
-                                            if (items.isEmpty()) {
-                                                div(classes = "alert alert-info") { +"まだアイテムがありません。下のフォームから新規作成してください。" }
+                                            if (flightLogs.isEmpty()) {
+                                                div(classes = "alert alert-info") { +"まだ飛行記録がありません。下のフォームから新規作成してください。" }
                                             } else {
                                                 div(classes = "table-responsive") {
                                                     table(classes = "table table-striped table-hover") {
                                                         thead(classes = "table-dark") {
                                                             tr {
                                                                 th { +"ID" }
-                                                                th { +"名前" }
-                                                                th { +"説明" }
+                                                                th { +"飛行日" }
+                                                                th { +"離着陸場所" }
+                                                                th { +"時刻" }
+                                                                th { +"飛行時間" }
+                                                                th { +"操縦者" }
                                                                 th(classes = "text-center") { +"操作" }
                                                             }
                                                         }
                                                         tbody {
-                                                            items.forEach { item ->
+                                                            flightLogs.forEach { flightLog ->
                                                                 tr {
-                                                                    td { +item.id.toString() }
-                                                                    td { +item.name }
-                                                                    td { +(item.description ?: "") }
+                                                                    td { +flightLog.id.toString() }
+                                                                    td { +flightLog.flightDate }
+                                                                    td { +flightLog.takeoffLandingLocation }
+                                                                    td { +flightLog.takeoffLandingTime }
+                                                                    td { +flightLog.flightDuration }
+                                                                    td { +flightLog.pilotName }
                                                                     td(classes = "text-center") {
-                                                                        a(href = "/items/ui/${item.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
-                                                                        form(action = "/items/ui/${item.id}", method = FormMethod.post, classes = "d-inline") {
+                                                                        a(href = "/items/ui/${flightLog.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
+                                                                        form(action = "/items/ui/${flightLog.id}", method = FormMethod.post, classes = "d-inline") {
                                                                             hiddenInput { name = "_method"; value = "delete" }
                                                                             submitInput(classes = "btn btn-sm btn-outline-danger") { 
                                                                                 value = "削除"
@@ -402,32 +412,65 @@ fun Application.configureRouting() {
                                     
                                     div(classes = "card mt-4") {
                                         div(classes = "card-header") {
-                                            h2(classes = "card-title mb-0") { +"新規作成" }
+                                            h2(classes = "card-title mb-0") { +"新規飛行記録作成" }
                                         }
                                         div(classes = "card-body") {
                                             form(action = "/items", method = FormMethod.post) {
                                                 div(classes = "row") {
-                                                    div(classes = "col-md-4 mb-3") {
-                                                        label(classes = "form-label") { +"名前" }
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"飛行年月日" }
                                                         textInput(classes = "form-control") { 
-                                                            name = "name"
-                                                            placeholder = "アイテム名を入力してください"
+                                                            name = "flightDate"
+                                                            type = InputType.date
                                                             required = true
                                                         }
                                                     }
                                                     div(classes = "col-md-6 mb-3") {
-                                                        label(classes = "form-label") { +"説明" }
+                                                        label(classes = "form-label") { +"離着陸場所" }
                                                         textInput(classes = "form-control") { 
-                                                            name = "description"
-                                                            placeholder = "説明を入力してください（任意）"
+                                                            name = "takeoffLandingLocation"
+                                                            placeholder = "離着陸場所を入力してください"
+                                                            required = true
                                                         }
                                                     }
-                                                    div(classes = "col-md-2 mb-3") {
-                                                        label(classes = "form-label") { +"　" } // spacer
-                                                        div(classes = "d-grid") {
-                                                            submitInput(classes = "btn btn-success") { value = "追加" }
+                                                }
+                                                div(classes = "row") {
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"離着陸時刻" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "takeoffLandingTime"
+                                                            type = InputType.time
+                                                            required = true
                                                         }
                                                     }
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"飛行時間" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "flightDuration"
+                                                            placeholder = "例: 1時間30分"
+                                                            required = true
+                                                        }
+                                                    }
+                                                }
+                                                div(classes = "row") {
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"飛行させた者の氏名" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "pilotName"
+                                                            placeholder = "操縦者名を入力してください"
+                                                            required = true
+                                                        }
+                                                    }
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"不具合やその対応（任意）" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "issuesAndResponses"
+                                                            placeholder = "不具合があれば記載してください"
+                                                        }
+                                                    }
+                                                }
+                                                div(classes = "d-grid") {
+                                                    submitInput(classes = "btn btn-success") { value = "飛行記録を追加" }
                                                 }
                                             }
                                         }
@@ -445,13 +488,13 @@ fun Application.configureRouting() {
                     return@get
                 }
                 val id = call.parameters["id"]?.toIntOrNull()
-                val item = id?.let { itemService.getByIdAndUserId(it, session.userId) }
-                if (item == null) {
+                val flightLog = id?.let { flightLogService.getByIdAndUserId(it, session.userId) }
+                if (flightLog == null) {
                     call.respond(HttpStatusCode.NotFound)
                     return@get
                 }
                 call.respondHtml {
-                    head { bootstrapHead("Item編集") }
+                    head { bootstrapHead("飛行記録編集") }
                     body {
                         nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
                             div(classes = "container") {
@@ -467,24 +510,64 @@ fun Application.configureRouting() {
                                 div(classes = "col-md-8") {
                                     div(classes = "card") {
                                         div(classes = "card-header") {
-                                            h1(classes = "card-title mb-0") { +"Item編集" }
+                                            h1(classes = "card-title mb-0") { +"飛行記録編集" }
                                         }
                                         div(classes = "card-body") {
-                                            form(action = "/items/ui/${item.id}", method = FormMethod.post) {
+                                            form(action = "/items/ui/${flightLog.id}", method = FormMethod.post) {
                                                 hiddenInput { name = "_method"; value = "put" }
-                                                div(classes = "mb-3") {
-                                                    label(classes = "form-label") { +"名前" }
-                                                    textInput(classes = "form-control") { 
-                                                        name = "name"
-                                                        value = item.name
-                                                        required = true
+                                                div(classes = "row") {
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"飛行年月日" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "flightDate"
+                                                            type = InputType.date
+                                                            value = flightLog.flightDate
+                                                            required = true
+                                                        }
+                                                    }
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"離着陸場所" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "takeoffLandingLocation"
+                                                            value = flightLog.takeoffLandingLocation
+                                                            required = true
+                                                        }
                                                     }
                                                 }
-                                                div(classes = "mb-3") {
-                                                    label(classes = "form-label") { +"説明" }
-                                                    textInput(classes = "form-control") { 
-                                                        name = "description"
-                                                        value = item.description ?: ""
+                                                div(classes = "row") {
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"離着陸時刻" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "takeoffLandingTime"
+                                                            type = InputType.time
+                                                            value = flightLog.takeoffLandingTime
+                                                            required = true
+                                                        }
+                                                    }
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"飛行時間" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "flightDuration"
+                                                            value = flightLog.flightDuration
+                                                            required = true
+                                                        }
+                                                    }
+                                                }
+                                                div(classes = "row") {
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"飛行させた者の氏名" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "pilotName"
+                                                            value = flightLog.pilotName
+                                                            required = true
+                                                        }
+                                                    }
+                                                    div(classes = "col-md-6 mb-3") {
+                                                        label(classes = "form-label") { +"不具合やその対応（任意）" }
+                                                        textInput(classes = "form-control") { 
+                                                            name = "issuesAndResponses"
+                                                            value = flightLog.issuesAndResponses ?: ""
+                                                        }
                                                     }
                                                 }
                                                 div(classes = "d-grid gap-2 d-md-block") {
@@ -492,7 +575,7 @@ fun Application.configureRouting() {
                                                 }
                                             }
                                             hr()
-                                            form(action = "/items/ui/${item.id}", method = FormMethod.post) {
+                                            form(action = "/items/ui/${flightLog.id}", method = FormMethod.post) {
                                                 hiddenInput { name = "_method"; value = "delete" }
                                                 div(classes = "d-grid") {
                                                     submitInput(classes = "btn btn-danger") { 
@@ -522,9 +605,13 @@ fun Application.configureRouting() {
                 when (method) {
                     "put" -> {
                         if (id != null) {
-                            val name = params["name"] ?: ""
-                            val description = params["description"]
-                            val updated = itemService.update(id, Item(id, name, description, session.userId), session.userId)
+                            val flightDate = params["flightDate"] ?: ""
+                            val takeoffLandingLocation = params["takeoffLandingLocation"] ?: ""
+                            val takeoffLandingTime = params["takeoffLandingTime"] ?: ""
+                            val flightDuration = params["flightDuration"] ?: ""
+                            val pilotName = params["pilotName"] ?: ""
+                            val issuesAndResponses = params["issuesAndResponses"]
+                            val updated = flightLogService.update(id, FlightLog(id, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId), session.userId)
                             if (updated) {
                                 call.respondRedirect("/items/ui")
                             } else {
@@ -535,7 +622,7 @@ fun Application.configureRouting() {
                         }
                     }
                     "delete" -> {
-                        if (id != null && itemService.delete(id, session.userId)) {
+                        if (id != null && flightLogService.delete(id, session.userId)) {
                             call.respondRedirect("/items/ui")
                         } else {
                             call.respond(HttpStatusCode.NotFound)
@@ -554,13 +641,17 @@ fun Application.configureRouting() {
                 val contentType = call.request.contentType()
                 if (contentType.match(ContentType.Application.FormUrlEncoded)) {
                     val params = call.receiveParameters()
-                    val name = params["name"] ?: ""
-                    val description = params["description"]
-                    val created = itemService.add(Item(0, name, description, session.userId))
+                    val flightDate = params["flightDate"] ?: ""
+                    val takeoffLandingLocation = params["takeoffLandingLocation"] ?: ""
+                    val takeoffLandingTime = params["takeoffLandingTime"] ?: ""
+                    val flightDuration = params["flightDuration"] ?: ""
+                    val pilotName = params["pilotName"] ?: ""
+                    val issuesAndResponses = params["issuesAndResponses"]
+                    val created = flightLogService.add(FlightLog(0, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId))
                     call.respondRedirect("/items/ui")
                 } else {
-                    val item = call.receive<Item>()
-                    val created = itemService.add(item.copy(userId = session.userId))
+                    val flightLog = call.receive<FlightLog>()
+                    val created = flightLogService.add(flightLog.copy(userId = session.userId))
                     call.respond(HttpStatusCode.Created, created)
                 }
             }
