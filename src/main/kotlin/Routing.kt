@@ -16,6 +16,15 @@ import com.opendronediary.service.UserService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 
+// Helper function to create Bootstrap head with CDN links
+fun HEAD.bootstrapHead(pageTitle: String) {
+    title { +pageTitle }
+    meta(charset = "utf-8")
+    meta(name = "viewport", content = "width=device-width, initial-scale=1")
+    link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css")
+    script(src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js") { }
+}
+
 fun Application.configureRouting() {
     val itemRepository = ItemRepository()
     val itemService = ItemService(itemRepository)
@@ -26,18 +35,33 @@ fun Application.configureRouting() {
         get("/") {
             val session = call.sessions.get<UserSession>()
             call.respondHtml {
-                head { title { +"トップ" } }
+                head { bootstrapHead("トップ") }
                 body {
-                    h1 { +"Hello World!" }
-                    if (session != null) {
-                        p { +"ログイン中: ${session.username}" }
-                        a(href = "/items/ui") { +"Item一覧へ" }
-                        br
-                        a(href = "/logout") { +"ログアウト" }
-                    } else {
-                        a(href = "/login") { +"ログイン" }
-                        br
-                        a(href = "/register") { +"ユーザー登録" }
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-8") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"🛩️ OpenDroneDiary 🚁" }
+                                    }
+                                    div(classes = "card-body") {
+                                        if (session != null) {
+                                            div(classes = "alert alert-success") { +"ログイン中: ${session.username}" }
+                                            div(classes = "d-grid gap-2") {
+                                                a(href = "/items/ui", classes = "btn btn-primary") { +"Item一覧へ" }
+                                                a(href = "/logout", classes = "btn btn-outline-secondary") { +"ログアウト" }
+                                            }
+                                        } else {
+                                            p(classes = "card-text") { +"ドローンの飛行日誌を管理するためのオープンソースのツールです。" }
+                                            div(classes = "d-grid gap-2") {
+                                                a(href = "/login", classes = "btn btn-primary") { +"ログイン" }
+                                                a(href = "/register", classes = "btn btn-outline-primary") { +"ユーザー登録" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
