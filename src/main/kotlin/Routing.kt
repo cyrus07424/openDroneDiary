@@ -70,17 +70,46 @@ fun Application.configureRouting() {
         // User authentication routes
         get("/login") {
             call.respondHtml {
-                head { title { +"ログイン" } }
+                head { bootstrapHead("ログイン") }
                 body {
-                    h1 { +"ログイン" }
-                    form(action = "/login", method = FormMethod.post) {
-                        textInput { name = "username"; placeholder = "ユーザー名" }
-                        br
-                        passwordInput { name = "password"; placeholder = "パスワード" }
-                        br
-                        submitInput { value = "ログイン" }
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"ログイン" }
+                                    }
+                                    div(classes = "card-body") {
+                                        form(action = "/login", method = FormMethod.post) {
+                                            div(classes = "mb-3") {
+                                                label(classes = "form-label") { +"ユーザー名" }
+                                                textInput(classes = "form-control") { 
+                                                    name = "username"
+                                                    placeholder = "ユーザー名を入力してください"
+                                                    required = true
+                                                }
+                                            }
+                                            div(classes = "mb-3") {
+                                                label(classes = "form-label") { +"パスワード" }
+                                                passwordInput(classes = "form-control") { 
+                                                    name = "password"
+                                                    placeholder = "パスワードを入力してください"
+                                                    required = true
+                                                }
+                                            }
+                                            div(classes = "d-grid") {
+                                                submitInput(classes = "btn btn-primary") { value = "ログイン" }
+                                            }
+                                        }
+                                        hr()
+                                        div(classes = "text-center") {
+                                            a(href = "/register", classes = "btn btn-link") { +"ユーザー登録はこちら" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                    a(href = "/register") { +"ユーザー登録はこちら" }
                 }
             }
         }
@@ -96,11 +125,25 @@ fun Application.configureRouting() {
                 call.respondRedirect("/")
             } else {
                 call.respondHtml(HttpStatusCode.Unauthorized) {
-                    head { title { +"ログインエラー" } }
+                    head { bootstrapHead("ログインエラー") }
                     body {
-                        h1 { +"ログインに失敗しました" }
-                        p { +"ユーザー名またはパスワードが間違っています。" }
-                        a(href = "/login") { +"戻る" }
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"ログインエラー" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-danger") {
+                                                +"ユーザー名またはパスワードが間違っています。"
+                                            }
+                                            a(href = "/login", classes = "btn btn-primary") { +"戻る" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -108,17 +151,46 @@ fun Application.configureRouting() {
         
         get("/register") {
             call.respondHtml {
-                head { title { +"ユーザー登録" } }
+                head { bootstrapHead("ユーザー登録") }
                 body {
-                    h1 { +"ユーザー登録" }
-                    form(action = "/register", method = FormMethod.post) {
-                        textInput { name = "username"; placeholder = "ユーザー名" }
-                        br
-                        passwordInput { name = "password"; placeholder = "パスワード" }
-                        br
-                        submitInput { value = "登録" }
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"ユーザー登録" }
+                                    }
+                                    div(classes = "card-body") {
+                                        form(action = "/register", method = FormMethod.post) {
+                                            div(classes = "mb-3") {
+                                                label(classes = "form-label") { +"ユーザー名" }
+                                                textInput(classes = "form-control") { 
+                                                    name = "username"
+                                                    placeholder = "ユーザー名を入力してください"
+                                                    required = true
+                                                }
+                                            }
+                                            div(classes = "mb-3") {
+                                                label(classes = "form-label") { +"パスワード" }
+                                                passwordInput(classes = "form-control") { 
+                                                    name = "password"
+                                                    placeholder = "パスワードを入力してください"
+                                                    required = true
+                                                }
+                                            }
+                                            div(classes = "d-grid") {
+                                                submitInput(classes = "btn btn-success") { value = "登録" }
+                                            }
+                                        }
+                                        hr()
+                                        div(classes = "text-center") {
+                                            a(href = "/login", classes = "btn btn-link") { +"ログインはこちら" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                    a(href = "/login") { +"ログインはこちら" }
                 }
             }
         }
@@ -130,11 +202,25 @@ fun Application.configureRouting() {
             
             if (username.isBlank() || password.isBlank()) {
                 call.respondHtml(HttpStatusCode.BadRequest) {
-                    head { title { +"登録エラー" } }
+                    head { bootstrapHead("登録エラー") }
                     body {
-                        h1 { +"入力エラー" }
-                        p { +"ユーザー名とパスワードは必須です。" }
-                        a(href = "/register") { +"戻る" }
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"入力エラー" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-danger") {
+                                                +"ユーザー名とパスワードは必須です。"
+                                            }
+                                            a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 return@post
@@ -146,11 +232,25 @@ fun Application.configureRouting() {
                 call.respondRedirect("/")
             } else {
                 call.respondHtml(HttpStatusCode.Conflict) {
-                    head { title { +"登録エラー" } }
+                    head { bootstrapHead("登録エラー") }
                     body {
-                        h1 { +"ユーザー登録に失敗しました" }
-                        p { +"そのユーザー名は既に使用されています。" }
-                        a(href = "/register") { +"戻る" }
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"登録エラー" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-warning") {
+                                                +"そのユーザー名は既に使用されています。"
+                                            }
+                                            a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
