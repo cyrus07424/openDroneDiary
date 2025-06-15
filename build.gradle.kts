@@ -23,7 +23,7 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.logback.classic)
-    implementation("io.ktor:ktor-server-html-builder:3.1.3")
+    implementation("io.ktor:ktor-server-html-builder:3.2.0")
     implementation("io.ktor:ktor-server-sessions:3.1.3")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
