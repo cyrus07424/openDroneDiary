@@ -10,6 +10,8 @@ import com.opendronediary.model.UserSession
 import com.opendronediary.service.UserService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
+import utils.GTMHelper.addGTMHeadScript
+import utils.GTMHelper.addGTMBodyScript
 
 // Helper function to create Bootstrap head with CDN links
 fun HEAD.bootstrapHead(pageTitle: String) {
@@ -18,6 +20,7 @@ fun HEAD.bootstrapHead(pageTitle: String) {
     meta(name = "viewport", content = "width=device-width, initial-scale=1")
     link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css")
     script(src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js") { }
+    addGTMHeadScript()
 }
 
 fun Route.configureTopAndAuthRouting(userService: UserService) {
@@ -26,6 +29,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         call.respondHtml {
             head { bootstrapHead("トップ") }
             body {
+                addGTMBodyScript()
                 div(classes = "container mt-5") {
                     div(classes = "row justify-content-center") {
                         div(classes = "col-md-8") {
@@ -63,6 +67,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         call.respondHtml {
             head { bootstrapHead("ログイン") }
             body {
+                addGTMBodyScript()
                 div(classes = "container mt-5") {
                     div(classes = "row justify-content-center") {
                         div(classes = "col-md-6") {
@@ -118,6 +123,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
             call.respondHtml(HttpStatusCode.Unauthorized) {
                 head { bootstrapHead("ログインエラー") }
                 body {
+                    addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row justify-content-center") {
                             div(classes = "col-md-6") {
@@ -144,6 +150,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         call.respondHtml {
             head { bootstrapHead("ユーザー登録") }
             body {
+                addGTMBodyScript()
                 div(classes = "container mt-5") {
                     div(classes = "row justify-content-center") {
                         div(classes = "col-md-6") {
@@ -195,6 +202,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
             call.respondHtml(HttpStatusCode.BadRequest) {
                 head { bootstrapHead("登録エラー") }
                 body {
+                    addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row justify-content-center") {
                             div(classes = "col-md-6") {
@@ -225,6 +233,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
             call.respondHtml(HttpStatusCode.Conflict) {
                 head { bootstrapHead("登録エラー") }
                 body {
+                    addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row justify-content-center") {
                             div(classes = "col-md-6") {

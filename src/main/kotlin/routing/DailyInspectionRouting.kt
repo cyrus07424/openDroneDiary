@@ -10,6 +10,7 @@ import com.opendronediary.model.UserSession
 import com.opendronediary.service.DailyInspectionRecordService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
+import utils.GTMHelper.addGTMBodyScript
 
 fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyInspectionRecordService) {
     // Daily Inspection Record UI routes
@@ -24,6 +25,7 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
             call.respondHtml {
                 head { bootstrapHead("日常点検記録一覧") }
                 body {
+                    addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row") {
                             div(classes = "col-12") {
@@ -144,6 +146,7 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
             call.respondHtml {
                 head { bootstrapHead("日常点検記録編集") }
                 body {
+                    addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row justify-content-center") {
                             div(classes = "col-md-8") {
