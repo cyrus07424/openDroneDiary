@@ -50,3 +50,19 @@ TERMS_OF_SERVICE_URL="https://example.com/terms" \
 - All HTML pages use flexbox layout for proper footer positioning
 - Footer is conditionally rendered based on available URLs
 - Terms checkbox is conditionally rendered and validated
+
+## Pages Updated
+- Home page (`/`) - ✅ Footer added
+- Login page (`/login`) - ✅ Footer added  
+- Registration page (`/register`) - ✅ Footer added + terms checkbox
+- Flight logs page (`/flightlogs/ui`) - ✅ Footer added
+
+## Additional Pages That Could Be Updated
+- Daily inspection pages (`/dailyinspections/ui`)
+- Maintenance inspection pages (`/maintenanceinspections/ui`)
+- Individual record edit pages
+
+The core functionality is fully implemented. Additional pages can be updated by:
+1. Adding `import utils.PolicyHelper.addFooter` to the routing file
+2. Adding `classes = "d-flex flex-column min-vh-100"` to the body tag
+3. Adding `addFooter()` before the closing body tag
