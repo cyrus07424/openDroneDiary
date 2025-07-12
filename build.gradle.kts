@@ -27,6 +27,18 @@ dependencies {
     implementation("io.ktor:ktor-server-sessions:3.2.1")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
+    
+    // Database dependencies
+    implementation("org.jetbrains.exposed:exposed-core:0.50.1")
+    implementation("org.jetbrains.exposed:exposed-dao:0.50.1")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.50.1")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.50.1")
+    implementation("org.postgresql:postgresql:42.7.3")
+    implementation("com.zaxxer:HikariCP:5.0.1")
+    
+    // H2 database for local development/testing
+    implementation("com.h2database:h2:2.2.224")
+    
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 }

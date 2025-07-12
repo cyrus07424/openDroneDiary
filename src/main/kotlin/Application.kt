@@ -2,12 +2,14 @@ package com.example
 
 import io.ktor.server.application.*
 import io.ktor.server.sessions.*
+import com.opendronediary.database.DatabaseConfig
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
 }
 
 fun Application.module() {
+    DatabaseConfig.initDatabase()
     configureSessions()
     configureRouting()
 }
