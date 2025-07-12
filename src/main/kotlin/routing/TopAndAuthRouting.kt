@@ -12,6 +12,9 @@ import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMHeadScript
 import utils.GTMHelper.addGTMBodyScript
+import utils.PolicyHelper.addFooter
+import utils.PolicyHelper.isTermsOfServiceEnabled
+import utils.PolicyHelper.getTermsOfServiceUrl
 
 // Helper function to create Bootstrap head with CDN links
 fun HEAD.bootstrapHead(pageTitle: String) {
@@ -28,7 +31,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         val session = call.sessions.get<UserSession>()
         call.respondHtml {
             head { bootstrapHead("トップ") }
-            body {
+            body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
                     div(classes = "row justify-content-center") {
@@ -58,6 +61,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                         }
                     }
                 }
+                addFooter()
             }
         }
     }
@@ -66,7 +70,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
     get("/login") {
         call.respondHtml {
             head { bootstrapHead("ログイン") }
-            body {
+            body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
                     div(classes = "row justify-content-center") {
@@ -106,6 +110,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                         }
                     }
                 }
+                addFooter()
             }
         }
     }
@@ -122,7 +127,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         } else {
             call.respondHtml(HttpStatusCode.Unauthorized) {
                 head { bootstrapHead("ログインエラー") }
-                body {
+                body(classes = "d-flex flex-column min-vh-100") {
                     addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row justify-content-center") {
@@ -141,6 +146,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                             }
                         }
                     }
+                    addFooter()
                 }
             }
         }
@@ -149,7 +155,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
     get("/register") {
         call.respondHtml {
             head { bootstrapHead("ユーザー登録") }
-            body {
+            body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
                     div(classes = "row justify-content-center") {
@@ -176,6 +182,26 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                                                 required = true
                                             }
                                         }
+                                        
+                                        // Terms of Service checkbox - only show if URL is configured
+                                        if (isTermsOfServiceEnabled()) {
+                                            div(classes = "mb-3") {
+                                                div(classes = "form-check") {
+                                                    checkBoxInput(classes = "form-check-input") {
+                                                        name = "agreeToTerms"
+                                                        id = "agreeToTerms"
+                                                        required = true
+                                                    }
+                                                    label(classes = "form-check-label") {
+                                                        htmlFor = "agreeToTerms"
+                                                        unsafe {
+                                                            raw("""<a href="${getTermsOfServiceUrl()}" target="_blank" class="text-decoration-none">利用規約</a>に同意します""")
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
                                         div(classes = "d-grid") {
                                             submitInput(classes = "btn btn-success") { value = "登録" }
                                         }
@@ -189,6 +215,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                         }
                     }
                 }
+                addFooter()
             }
         }
     }
@@ -197,11 +224,12 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         val params = call.receiveParameters()
         val username = params["username"] ?: ""
         val password = params["password"] ?: ""
+        val agreeToTerms = params["agreeToTerms"] ?: ""
         
         if (username.isBlank() || password.isBlank()) {
             call.respondHtml(HttpStatusCode.BadRequest) {
                 head { bootstrapHead("登録エラー") }
-                body {
+                body(classes = "d-flex flex-column min-vh-100") {
                     addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row justify-content-center") {
@@ -220,6 +248,36 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                             }
                         }
                     }
+                    addFooter()
+                }
+            }
+            return@post
+        }
+        
+        // Check terms of service agreement if enabled
+        if (isTermsOfServiceEnabled() && agreeToTerms.isBlank()) {
+            call.respondHtml(HttpStatusCode.BadRequest) {
+                head { bootstrapHead("登録エラー") }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"利用規約エラー" }
+                                    }
+                                    div(classes = "card-body") {
+                                        div(classes = "alert alert-danger") {
+                                            +"利用規約への同意は必須です。"
+                                        }
+                                        a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
                 }
             }
             return@post
@@ -232,7 +290,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         } else {
             call.respondHtml(HttpStatusCode.Conflict) {
                 head { bootstrapHead("登録エラー") }
-                body {
+                body(classes = "d-flex flex-column min-vh-100") {
                     addGTMBodyScript()
                     div(classes = "container mt-5") {
                         div(classes = "row justify-content-center") {
@@ -251,6 +309,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                             }
                         }
                     }
+                    addFooter()
                 }
             }
         }

@@ -7,13 +7,28 @@ import io.ktor.http.*
 import io.ktor.server.testing.*
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
-class GTMIntegrationTest {
+class PolicyIntegrationTest {
     
     @Test
-    fun testGTMIntegrationWithoutEnvironmentVariable() = testApplication {
+    fun testRegistrationPageWithoutTermsUrl() = testApplication {
+        application {
+            module()
+        }
+        
+        val response = client.get("/register")
+        assertEquals(HttpStatusCode.OK, response.status)
+        
+        val htmlContent = response.bodyAsText()
+        // Should not contain terms checkbox when environment variable is not set
+        assertFalse(htmlContent.contains("agreeToTerms"))
+        assertFalse(htmlContent.contains("利用規約に同意します"))
+    }
+    
+    @Test
+    fun testFooterWithoutPolicyUrls() = testApplication {
         application {
             module()
         }
@@ -22,32 +37,14 @@ class GTMIntegrationTest {
         assertEquals(HttpStatusCode.OK, response.status)
         
         val htmlContent = response.bodyAsText()
-        assertFalse(htmlContent.contains("googletagmanager.com"))
-        assertFalse(htmlContent.contains("gtm.js"))
-        assertFalse(htmlContent.contains("dataLayer"))
-        assertFalse(htmlContent.contains("<noscript>"))
+        // Should not contain footer when environment variables are not set
+        assertFalse(htmlContent.contains("<footer"))
+        assertFalse(htmlContent.contains("利用規約"))
+        assertFalse(htmlContent.contains("プライバシーポリシー"))
     }
     
     @Test
-    fun testGTMIntegrationWithEnvironmentVariable() = testApplication {
-        application {
-            module()
-        }
-        
-        val response = client.get("/")
-        assertEquals(HttpStatusCode.OK, response.status)
-        
-        val htmlContent = response.bodyAsText()
-        // Since we can't easily set environment variables in this test context,
-        // we'll verify the basic structure is preserved
-        assertTrue(htmlContent.contains("<!DOCTYPE html>"))
-        assertTrue(htmlContent.contains("<head>"))
-        assertTrue(htmlContent.contains("<body"))
-        assertTrue(htmlContent.contains("OpenDroneDiary"))
-    }
-    
-    @Test
-    fun testAllPagesHaveProperStructure() = testApplication {
+    fun testBasicPageStructure() = testApplication {
         application {
             module()
         }
