@@ -42,7 +42,7 @@ class GTMIntegrationTest {
         // we'll verify the basic structure is preserved
         assertTrue(htmlContent.contains("<!DOCTYPE html>"))
         assertTrue(htmlContent.contains("<head>"))
-        assertTrue(htmlContent.contains("<body>"))
+        assertTrue(htmlContent.contains("<body"))
         assertTrue(htmlContent.contains("OpenDroneDiary"))
     }
     
@@ -61,7 +61,7 @@ class GTMIntegrationTest {
             val htmlContent = response.bodyAsText()
             assertTrue(htmlContent.contains("<!DOCTYPE html>"))
             assertTrue(htmlContent.contains("<head>"))
-            assertTrue(htmlContent.contains("<body>"))
+            assertTrue(htmlContent.contains("<body"))
             assertTrue(htmlContent.contains("bootstrap"))
         }
     }

@@ -11,6 +11,7 @@ import com.opendronediary.service.FlightLogService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMBodyScript
+import utils.PolicyHelper.addFooter
 
 fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
     // 飛行記録 CRUD - Authentication required
@@ -99,7 +100,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
             val flightLogs = flightLogService.getAllByUserId(session.userId)
             call.respondHtml {
                 head { bootstrapHead("飛行記録一覧") }
-                body {
+                body(classes = "d-flex flex-column min-vh-100") {
                     addGTMBodyScript()
                     nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
                         div(classes = "container") {
@@ -231,6 +232,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
                             }
                         }
                     }
+                    addFooter()
                 }
             }
         }
