@@ -37,7 +37,7 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.0.1")
     
     // H2 database for local development/testing
-    implementation("com.h2database:h2:2.2.224")
+    implementation("com.h2database:h2:2.3.232")
     
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
