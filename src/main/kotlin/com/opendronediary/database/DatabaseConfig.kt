@@ -50,7 +50,8 @@ object DatabaseConfig {
                 Users,
                 FlightLogs,
                 DailyInspectionRecords,
-                MaintenanceInspectionRecords
+                MaintenanceInspectionRecords,
+                PasswordResetTokens
             )
         }
     }

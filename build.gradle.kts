@@ -28,6 +28,9 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.2")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
     
+    // SendGrid for email
+    implementation("com.sendgrid:sendgrid-java:4.9.3")
+    
     // Database dependencies
     implementation("org.jetbrains.exposed:exposed-core:0.50.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.50.1")
