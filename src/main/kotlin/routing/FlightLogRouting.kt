@@ -311,6 +311,324 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
                 }
             }
         }
+        
+        // Calendar view
+        get("/calendar") {
+            val session = call.sessions.get<UserSession>()
+            if (session == null) {
+                call.respondRedirect("/login")
+                return@get
+            }
+            val flightLogs = flightLogService.getAllByUserId(session.userId)
+            call.respondHtml {
+                head { 
+                    bootstrapHead("飛行記録 - カレンダー表示")
+                    // Add FullCalendar CSS and JS
+                    link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css")
+                    script(src = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js") {}
+                }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
+                        div(classes = "container") {
+                            a(href = "/", classes = "navbar-brand") { +"🛩️ OpenDroneDiary" }
+                            div(classes = "navbar-nav ms-auto") {
+                                span(classes = "navbar-text me-3") { +"ログイン中: ${session.username}" }
+                                a(href = "/logout", classes = "btn btn-outline-light btn-sm") { +"ログアウト" }
+                            }
+                        }
+                    }
+                    div(classes = "container mt-4") {
+                        div(classes = "row") {
+                            div(classes = "col-12") {
+                                div(classes = "card") {
+                                    div(classes = "card-header d-flex justify-content-between align-items-center") {
+                                        h1(classes = "card-title mb-0") { +"📅 飛行記録 - カレンダー表示" }
+                                        div {
+                                            a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
+                                            a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
+                                            a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
+                                        }
+                                    }
+                                    div(classes = "card-body") {
+                                        div { id = "calendar" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                    
+                    // FullCalendar initialization script
+                    script {
+                        unsafe {
+                            +"""
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    var calendarEl = document.getElementById('calendar');
+                                    var events = [
+                            """.trimIndent()
+                        }
+                        
+                        // Generate events data from flight logs
+                        flightLogs.forEachIndexed { index, flightLog ->
+                            val title = if (!flightLog.takeoffLocation.isNullOrEmpty() && !flightLog.landingLocation.isNullOrEmpty()) {
+                                "${flightLog.takeoffLocation} → ${flightLog.landingLocation}"
+                            } else {
+                                flightLog.takeoffLandingLocation ?: "飛行記録"
+                            }
+                            
+                            val time = if (!flightLog.takeoffTime.isNullOrEmpty() && !flightLog.landingTime.isNullOrEmpty()) {
+                                " (${flightLog.takeoffTime}-${flightLog.landingTime})"
+                            } else if (!flightLog.takeoffLandingTime.isNullOrEmpty()) {
+                                " (${flightLog.takeoffLandingTime})"
+                            } else ""
+                            
+                            unsafe {
+                                +"""
+                                        {
+                                            title: '${title}${time}',
+                                            start: '${flightLog.flightDate}',
+                                            url: '/flightlogs/ui/${flightLog.id}',
+                                            backgroundColor: '#0d6efd',
+                                            borderColor: '#0d6efd'
+                                        }${if (index < flightLogs.size - 1) "," else ""}
+                                """.trimIndent()
+                            }
+                        }
+                        
+                        unsafe {
+                            +"""
+                                    ];
+                                    
+                                    var calendar = new FullCalendar.Calendar(calendarEl, {
+                                        initialView: 'dayGridMonth',
+                                        headerToolbar: {
+                                            left: 'prev,next today',
+                                            center: 'title',
+                                            right: 'dayGridMonth,listWeek'
+                                        },
+                                        events: events,
+                                        locale: 'ja',
+                                        height: 600,
+                                        eventClick: function(info) {
+                                            info.jsEvent.preventDefault();
+                                            if (info.event.url) {
+                                                window.open(info.event.url, '_self');
+                                            }
+                                        }
+                                    });
+                                    
+                                    calendar.render();
+                                });
+                            """.trimIndent()
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Timeline view
+        get("/timeline") {
+            val session = call.sessions.get<UserSession>()
+            if (session == null) {
+                call.respondRedirect("/login")
+                return@get
+            }
+            val flightLogs = flightLogService.getAllByUserId(session.userId)
+                .sortedByDescending { it.flightDate } // Sort by date descending
+            call.respondHtml {
+                head { 
+                    bootstrapHead("飛行記録 - タイムライン表示")
+                    style {
+                        unsafe {
+                            +"""
+                                .timeline {
+                                    position: relative;
+                                    padding-left: 30px;
+                                }
+                                
+                                .timeline::before {
+                                    content: '';
+                                    position: absolute;
+                                    left: 15px;
+                                    top: 0;
+                                    bottom: 0;
+                                    width: 2px;
+                                    background: #007bff;
+                                }
+                                
+                                .timeline-item {
+                                    position: relative;
+                                    margin-bottom: 30px;
+                                    padding-left: 25px;
+                                }
+                                
+                                .timeline-item::before {
+                                    content: '';
+                                    position: absolute;
+                                    left: -7px;
+                                    top: 10px;
+                                    width: 14px;
+                                    height: 14px;
+                                    border-radius: 50%;
+                                    background: #007bff;
+                                    border: 3px solid #fff;
+                                    box-shadow: 0 0 0 2px #007bff;
+                                }
+                                
+                                .flight-duration-bar {
+                                    height: 20px;
+                                    background: linear-gradient(90deg, #28a745 0%, #ffc107 50%, #dc3545 100%);
+                                    border-radius: 10px;
+                                    position: relative;
+                                    margin: 10px 0;
+                                }
+                                
+                                .flight-duration-text {
+                                    position: absolute;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    color: white;
+                                    font-weight: bold;
+                                    font-size: 12px;
+                                    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+                                }
+                            """.trimIndent()
+                        }
+                    }
+                }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
+                        div(classes = "container") {
+                            a(href = "/", classes = "navbar-brand") { +"🛩️ OpenDroneDiary" }
+                            div(classes = "navbar-nav ms-auto") {
+                                span(classes = "navbar-text me-3") { +"ログイン中: ${session.username}" }
+                                a(href = "/logout", classes = "btn btn-outline-light btn-sm") { +"ログアウト" }
+                            }
+                        }
+                    }
+                    div(classes = "container mt-4") {
+                        div(classes = "row") {
+                            div(classes = "col-12") {
+                                div(classes = "card") {
+                                    div(classes = "card-header d-flex justify-content-between align-items-center") {
+                                        h1(classes = "card-title mb-0") { +"📊 飛行記録 - タイムライン表示" }
+                                        div {
+                                            a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
+                                            a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
+                                            a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
+                                        }
+                                    }
+                                    div(classes = "card-body") {
+                                        if (flightLogs.isEmpty()) {
+                                            div(classes = "alert alert-info") { +"まだ飛行記録がありません。" }
+                                        } else {
+                                            div(classes = "timeline") {
+                                                flightLogs.forEach { flightLog ->
+                                                    div(classes = "timeline-item") {
+                                                        div(classes = "card border-0 shadow-sm") {
+                                                            div(classes = "card-header bg-light d-flex justify-content-between align-items-center") {
+                                                                h5(classes = "mb-0") { 
+                                                                    +"📅 ${flightLog.flightDate}"
+                                                                }
+                                                                span(classes = "badge bg-primary") { +"#${flightLog.id}" }
+                                                            }
+                                                            div(classes = "card-body") {
+                                                                div(classes = "row") {
+                                                                    div(classes = "col-md-6") {
+                                                                        if (!flightLog.takeoffLocation.isNullOrEmpty() && !flightLog.landingLocation.isNullOrEmpty()) {
+                                                                            p(classes = "mb-2") {
+                                                                                strong { +"🛫 離陸場所: " }
+                                                                                +flightLog.takeoffLocation
+                                                                            }
+                                                                            p(classes = "mb-2") {
+                                                                                strong { +"🛬 着陸場所: " }
+                                                                                +flightLog.landingLocation
+                                                                            }
+                                                                        } else if (!flightLog.takeoffLandingLocation.isNullOrEmpty()) {
+                                                                            p(classes = "mb-2") {
+                                                                                strong { +"📍 離着陸場所: " }
+                                                                                +flightLog.takeoffLandingLocation
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    div(classes = "col-md-6") {
+                                                                        if (!flightLog.takeoffTime.isNullOrEmpty() && !flightLog.landingTime.isNullOrEmpty()) {
+                                                                            p(classes = "mb-2") {
+                                                                                strong { +"🕐 離陸時刻: " }
+                                                                                +flightLog.takeoffTime
+                                                                            }
+                                                                            p(classes = "mb-2") {
+                                                                                strong { +"🕐 着陸時刻: " }
+                                                                                +flightLog.landingTime
+                                                                            }
+                                                                        } else if (!flightLog.takeoffLandingTime.isNullOrEmpty()) {
+                                                                            p(classes = "mb-2") {
+                                                                                strong { +"🕐 時刻: " }
+                                                                                +flightLog.takeoffLandingTime
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                
+                                                                // Flight duration visualization
+                                                                val duration = flightLog.totalFlightTime ?: flightLog.flightDuration
+                                                                if (!duration.isNullOrEmpty()) {
+                                                                    div(classes = "flight-duration-bar") {
+                                                                        div(classes = "flight-duration-text") {
+                                                                            +"⏱️ $duration"
+                                                                        }
+                                                                    }
+                                                                }
+                                                                
+                                                                div(classes = "row mt-3") {
+                                                                    div(classes = "col-md-6") {
+                                                                        p(classes = "mb-2") {
+                                                                            strong { +"👨‍✈️ 操縦者: " }
+                                                                            +flightLog.pilotName
+                                                                        }
+                                                                    }
+                                                                    div(classes = "col-md-6 text-end") {
+                                                                        a(href = "/flightlogs/ui/${flightLog.id}", classes = "btn btn-sm btn-outline-primary") { 
+                                                                            +"📝 編集" 
+                                                                        }
+                                                                    }
+                                                                }
+                                                                
+                                                                if (!flightLog.flightSummary.isNullOrEmpty()) {
+                                                                    hr()
+                                                                    p(classes = "mb-2") {
+                                                                        strong { +"📋 飛行概要: " }
+                                                                        br()
+                                                                        +flightLog.flightSummary
+                                                                    }
+                                                                }
+                                                                
+                                                                if (!flightLog.issuesAndResponses.isNullOrEmpty()) {
+                                                                    div(classes = "alert alert-warning mt-3 mb-0") {
+                                                                        strong { +"⚠️ 不具合・対応: " }
+                                                                        br()
+                                                                        +flightLog.issuesAndResponses
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                }
+            }
+        }
+        
         get("/{id}") {
             val session = call.sessions.get<UserSession>()
             if (session == null) {
