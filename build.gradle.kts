@@ -30,7 +30,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
     
     // SendGrid for email
-    implementation("com.sendgrid:sendgrid-java:4.9.3")
+    implementation("com.sendgrid:sendgrid-java:4.10.3")
     
     // Database dependencies
     implementation("org.jetbrains.exposed:exposed-core:0.50.1")
