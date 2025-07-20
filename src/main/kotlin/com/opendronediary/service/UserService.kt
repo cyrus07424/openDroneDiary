@@ -2,6 +2,7 @@ package com.opendronediary.service
 
 import com.opendronediary.model.User
 import com.opendronediary.repository.UserRepository
+import org.mindrot.jbcrypt.BCrypt
 import java.security.SecureRandom
 import java.time.LocalDateTime
 import java.util.*
@@ -60,12 +61,21 @@ class UserService(private val repository: UserRepository) {
     }
     
     private fun hashPassword(password: String): String {
-        // Simple hash for demo purposes - in real app use bcrypt or similar
-        return password.hashCode().toString()
+        return BCrypt.hashpw(password, BCrypt.gensalt())
     }
     
     private fun verifyPassword(password: String, hash: String): Boolean {
-        return hashPassword(password) == hash
+        // For backward compatibility, check if hash is in old format
+        if (hash.matches(Regex("-?\\d+"))) {
+            // Old hashCode format - migrate to bcrypt
+            return false // Force re-login to update to bcrypt
+        }
+        
+        return try {
+            BCrypt.checkpw(password, hash)
+        } catch (e: Exception) {
+            false
+        }
     }
     
     private fun generateSecureToken(): String {

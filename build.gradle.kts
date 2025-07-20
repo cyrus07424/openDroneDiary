@@ -42,6 +42,9 @@ dependencies {
     // H2 database for local development/testing
     implementation("com.h2database:h2:2.3.232")
     
+    // bcrypt for password hashing
+    implementation("org.mindrot:jbcrypt:0.4")
+    
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 }
