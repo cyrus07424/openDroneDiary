@@ -19,7 +19,13 @@ class FlightLogRepository {
                     flightDuration = it[FlightLogs.flightDuration],
                     pilotName = it[FlightLogs.pilotName],
                     issuesAndResponses = it[FlightLogs.issuesAndResponses],
-                    userId = it[FlightLogs.userId]
+                    userId = it[FlightLogs.userId],
+                    takeoffLocation = it[FlightLogs.takeoffLocation],
+                    landingLocation = it[FlightLogs.landingLocation],
+                    takeoffTime = it[FlightLogs.takeoffTime],
+                    landingTime = it[FlightLogs.landingTime],
+                    flightSummary = it[FlightLogs.flightSummary],
+                    totalFlightTime = it[FlightLogs.totalFlightTime]
                 )
             }
     }
@@ -35,7 +41,13 @@ class FlightLogRepository {
                     flightDuration = it[FlightLogs.flightDuration],
                     pilotName = it[FlightLogs.pilotName],
                     issuesAndResponses = it[FlightLogs.issuesAndResponses],
-                    userId = it[FlightLogs.userId]
+                    userId = it[FlightLogs.userId],
+                    takeoffLocation = it[FlightLogs.takeoffLocation],
+                    landingLocation = it[FlightLogs.landingLocation],
+                    takeoffTime = it[FlightLogs.takeoffTime],
+                    landingTime = it[FlightLogs.landingTime],
+                    flightSummary = it[FlightLogs.flightSummary],
+                    totalFlightTime = it[FlightLogs.totalFlightTime]
                 )
             }
             .singleOrNull()
@@ -50,6 +62,12 @@ class FlightLogRepository {
             it[pilotName] = flightLog.pilotName
             it[issuesAndResponses] = flightLog.issuesAndResponses
             it[userId] = flightLog.userId
+            it[takeoffLocation] = flightLog.takeoffLocation
+            it[landingLocation] = flightLog.landingLocation
+            it[takeoffTime] = flightLog.takeoffTime
+            it[landingTime] = flightLog.landingTime
+            it[flightSummary] = flightLog.flightSummary
+            it[totalFlightTime] = flightLog.totalFlightTime
         } get FlightLogs.id
         flightLog.copy(id = insertedId)
     }
@@ -64,6 +82,12 @@ class FlightLogRepository {
             it[flightDuration] = flightLog.flightDuration
             it[pilotName] = flightLog.pilotName
             it[issuesAndResponses] = flightLog.issuesAndResponses
+            it[takeoffLocation] = flightLog.takeoffLocation
+            it[landingLocation] = flightLog.landingLocation
+            it[takeoffTime] = flightLog.takeoffTime
+            it[landingTime] = flightLog.landingTime
+            it[flightSummary] = flightLog.flightSummary
+            it[totalFlightTime] = flightLog.totalFlightTime
         }
         updateCount > 0
     }
