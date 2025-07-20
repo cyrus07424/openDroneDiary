@@ -26,6 +26,7 @@ dependencies {
     implementation("io.ktor:ktor-server-html-builder:3.2.2")
     implementation("io.ktor:ktor-server-sessions:3.2.2")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.2")
+    implementation("io.ktor:ktor-server-status-pages:3.2.2")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
     
     // SendGrid for email
