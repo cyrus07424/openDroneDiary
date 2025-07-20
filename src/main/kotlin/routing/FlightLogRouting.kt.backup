@@ -48,38 +48,12 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
             if (contentType.match(ContentType.Application.FormUrlEncoded)) {
                 val params = call.receiveParameters()
                 val flightDate = params["flightDate"] ?: ""
+                val takeoffLandingLocation = params["takeoffLandingLocation"] ?: ""
+                val takeoffLandingTime = params["takeoffLandingTime"] ?: ""
+                val flightDuration = params["flightDuration"] ?: ""
                 val pilotName = params["pilotName"] ?: ""
                 val issuesAndResponses = params["issuesAndResponses"]
-                
-                // Handle new fields
-                val takeoffLocation = params["takeoffLocation"]
-                val landingLocation = params["landingLocation"]
-                val takeoffTime = params["takeoffTime"]
-                val landingTime = params["landingTime"]
-                val flightSummary = params["flightSummary"]
-                val totalFlightTime = params["totalFlightTime"]
-                
-                // Legacy fields for backward compatibility
-                val takeoffLandingLocation = params["takeoffLandingLocation"]
-                val takeoffLandingTime = params["takeoffLandingTime"]
-                val flightDuration = params["flightDuration"]
-                
-                val created = flightLogService.add(FlightLog(
-                    id = 0, 
-                    flightDate = flightDate, 
-                    takeoffLandingLocation = takeoffLandingLocation, 
-                    takeoffLandingTime = takeoffLandingTime, 
-                    flightDuration = flightDuration, 
-                    pilotName = pilotName, 
-                    issuesAndResponses = issuesAndResponses, 
-                    userId = session.userId,
-                    takeoffLocation = takeoffLocation,
-                    landingLocation = landingLocation,
-                    takeoffTime = takeoffTime,
-                    landingTime = landingTime,
-                    flightSummary = flightSummary,
-                    totalFlightTime = totalFlightTime
-                ))
+                val created = flightLogService.add(FlightLog(0, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId))
                 call.respondRedirect("/flightlogs/ui")
             } else {
                 val flightLog = call.receive<FlightLog>()
@@ -143,11 +117,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
                                 div(classes = "card") {
                                     div(classes = "card-header d-flex justify-content-between align-items-center") {
                                         h1(classes = "card-title mb-0") { +"飛行記録一覧" }
-                                        div {
-                                            a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
-                                            a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
-                                            a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
-                                        }
+                                        a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
                                     }
                                     div(classes = "card-body") {
                                         if (flightLogs.isEmpty()) {
@@ -468,38 +438,12 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
                 "put" -> {
                     if (id != null) {
                         val flightDate = params["flightDate"] ?: ""
+                        val takeoffLandingLocation = params["takeoffLandingLocation"] ?: ""
+                        val takeoffLandingTime = params["takeoffLandingTime"] ?: ""
+                        val flightDuration = params["flightDuration"] ?: ""
                         val pilotName = params["pilotName"] ?: ""
                         val issuesAndResponses = params["issuesAndResponses"]
-                        
-                        // Handle new fields
-                        val takeoffLocation = params["takeoffLocation"]
-                        val landingLocation = params["landingLocation"]
-                        val takeoffTime = params["takeoffTime"]
-                        val landingTime = params["landingTime"]
-                        val flightSummary = params["flightSummary"]
-                        val totalFlightTime = params["totalFlightTime"]
-                        
-                        // Legacy fields for backward compatibility  
-                        val takeoffLandingLocation = params["takeoffLandingLocation"]
-                        val takeoffLandingTime = params["takeoffLandingTime"]
-                        val flightDuration = params["flightDuration"]
-                        
-                        val updated = flightLogService.update(id, FlightLog(
-                            id = id, 
-                            flightDate = flightDate, 
-                            takeoffLandingLocation = takeoffLandingLocation, 
-                            takeoffLandingTime = takeoffLandingTime, 
-                            flightDuration = flightDuration, 
-                            pilotName = pilotName, 
-                            issuesAndResponses = issuesAndResponses, 
-                            userId = session.userId,
-                            takeoffLocation = takeoffLocation,
-                            landingLocation = landingLocation,
-                            takeoffTime = takeoffTime,
-                            landingTime = landingTime,
-                            flightSummary = flightSummary,
-                            totalFlightTime = totalFlightTime
-                        ), session.userId)
+                        val updated = flightLogService.update(id, FlightLog(id, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId), session.userId)
                         if (updated) {
                             call.respondRedirect("/flightlogs/ui")
                         } else {
@@ -530,38 +474,12 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
             if (contentType.match(ContentType.Application.FormUrlEncoded)) {
                 val params = call.receiveParameters()
                 val flightDate = params["flightDate"] ?: ""
+                val takeoffLandingLocation = params["takeoffLandingLocation"] ?: ""
+                val takeoffLandingTime = params["takeoffLandingTime"] ?: ""
+                val flightDuration = params["flightDuration"] ?: ""
                 val pilotName = params["pilotName"] ?: ""
                 val issuesAndResponses = params["issuesAndResponses"]
-                
-                // Handle new fields
-                val takeoffLocation = params["takeoffLocation"]
-                val landingLocation = params["landingLocation"]
-                val takeoffTime = params["takeoffTime"]
-                val landingTime = params["landingTime"]
-                val flightSummary = params["flightSummary"]
-                val totalFlightTime = params["totalFlightTime"]
-                
-                // Legacy fields for backward compatibility
-                val takeoffLandingLocation = params["takeoffLandingLocation"]
-                val takeoffLandingTime = params["takeoffLandingTime"]
-                val flightDuration = params["flightDuration"]
-                
-                val created = flightLogService.add(FlightLog(
-                    id = 0, 
-                    flightDate = flightDate, 
-                    takeoffLandingLocation = takeoffLandingLocation, 
-                    takeoffLandingTime = takeoffLandingTime, 
-                    flightDuration = flightDuration, 
-                    pilotName = pilotName, 
-                    issuesAndResponses = issuesAndResponses, 
-                    userId = session.userId,
-                    takeoffLocation = takeoffLocation,
-                    landingLocation = landingLocation,
-                    takeoffTime = takeoffTime,
-                    landingTime = landingTime,
-                    flightSummary = flightSummary,
-                    totalFlightTime = totalFlightTime
-                ))
+                val created = flightLogService.add(FlightLog(0, flightDate, takeoffLandingLocation, takeoffLandingTime, flightDuration, pilotName, issuesAndResponses, session.userId))
                 call.respondRedirect("/flightlogs/ui")
             } else {
                 val flightLog = call.receive<FlightLog>()

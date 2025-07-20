@@ -16,12 +16,20 @@ object Users : Table() {
 object FlightLogs : Table() {
     val id = integer("id").autoIncrement()
     val flightDate = varchar("flight_date", 20)
-    val takeoffLandingLocation = varchar("takeoff_landing_location", 255)
-    val takeoffLandingTime = varchar("takeoff_landing_time", 20)
-    val flightDuration = varchar("flight_duration", 20)
+    val takeoffLandingLocation = varchar("takeoff_landing_location", 255).nullable() // Keep for backward compatibility
+    val takeoffLandingTime = varchar("takeoff_landing_time", 20).nullable() // Keep for backward compatibility
+    val flightDuration = varchar("flight_duration", 20).nullable() // Make nullable
     val pilotName = varchar("pilot_name", 100)
     val issuesAndResponses = varchar("issues_and_responses", 1000).nullable()
     val userId = integer("user_id").references(Users.id)
+    
+    // New fields for enhanced flight logging
+    val takeoffLocation = varchar("takeoff_location", 255).nullable()
+    val landingLocation = varchar("landing_location", 255).nullable()
+    val takeoffTime = varchar("takeoff_time", 20).nullable()
+    val landingTime = varchar("landing_time", 20).nullable()
+    val flightSummary = varchar("flight_summary", 1000).nullable()
+    val totalFlightTime = varchar("total_flight_time", 20).nullable()
     
     override val primaryKey = PrimaryKey(id)
 }
