@@ -8,6 +8,7 @@ import io.ktor.server.sessions.*
 import io.ktor.http.*
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.UserService
+import com.opendronediary.service.EmailService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMHeadScript
@@ -26,7 +27,7 @@ fun HEAD.bootstrapHead(pageTitle: String) {
     addGTMHeadScript()
 }
 
-fun Route.configureTopAndAuthRouting(userService: UserService) {
+fun Route.configureTopAndAuthRouting(userService: UserService, emailService: EmailService) {
     get("/") {
         val session = call.sessions.get<UserSession>()
         call.respondHtml {
@@ -104,6 +105,8 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                                     hr()
                                     div(classes = "text-center") {
                                         a(href = "/register", classes = "btn btn-link") { +"ユーザー登録はこちら" }
+                                        br()
+                                        a(href = "/forgot-password", classes = "btn btn-link text-muted") { +"パスワードを忘れた場合" }
                                     }
                                 }
                             }
@@ -175,6 +178,14 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                                             }
                                         }
                                         div(classes = "mb-3") {
+                                            label(classes = "form-label") { +"メールアドレス" }
+                                            emailInput(classes = "form-control") { 
+                                                name = "email"
+                                                placeholder = "メールアドレスを入力してください"
+                                                required = true
+                                            }
+                                        }
+                                        div(classes = "mb-3") {
                                             label(classes = "form-label") { +"パスワード" }
                                             passwordInput(classes = "form-control") { 
                                                 name = "password"
@@ -224,9 +235,10 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
         val params = call.receiveParameters()
         val username = params["username"] ?: ""
         val password = params["password"] ?: ""
+        val email = params["email"] ?: ""
         val agreeToTerms = params["agreeToTerms"] ?: ""
         
-        if (username.isBlank() || password.isBlank()) {
+        if (username.isBlank() || password.isBlank() || email.isBlank()) {
             call.respondHtml(HttpStatusCode.BadRequest) {
                 head { bootstrapHead("登録エラー") }
                 body(classes = "d-flex flex-column min-vh-100") {
@@ -240,7 +252,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                                     }
                                     div(classes = "card-body") {
                                         div(classes = "alert alert-danger") {
-                                            +"ユーザー名とパスワードは必須です。"
+                                            +"ユーザー名、メールアドレス、パスワードは必須です。"
                                         }
                                         a(href = "/register", classes = "btn btn-primary") { +"戻る" }
                                     }
@@ -283,8 +295,11 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
             return@post
         }
         
-        val user = userService.register(username, password)
+        val user = userService.register(username, password, email)
         if (user != null) {
+            // Send welcome email
+            emailService.sendWelcomeEmail(email, username)
+            
             call.sessions.set(UserSession(user.id, user.username))
             call.respondRedirect("/")
         } else {
@@ -301,7 +316,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
                                     }
                                     div(classes = "card-body") {
                                         div(classes = "alert alert-warning") {
-                                            +"そのユーザー名は既に使用されています。"
+                                            +"そのユーザー名またはメールアドレスは既に使用されています。"
                                         }
                                         a(href = "/register", classes = "btn btn-primary") { +"戻る" }
                                     }
@@ -318,5 +333,285 @@ fun Route.configureTopAndAuthRouting(userService: UserService) {
     get("/logout") {
         call.sessions.clear<UserSession>()
         call.respondRedirect("/")
+    }
+    
+    // Password reset routes
+    get("/forgot-password") {
+        call.respondHtml {
+            head { bootstrapHead("パスワードリセット") }
+            body(classes = "d-flex flex-column min-vh-100") {
+                addGTMBodyScript()
+                div(classes = "container mt-5") {
+                    div(classes = "row justify-content-center") {
+                        div(classes = "col-md-6") {
+                            div(classes = "card") {
+                                div(classes = "card-header") {
+                                    h1(classes = "card-title mb-0") { +"パスワードリセット" }
+                                }
+                                div(classes = "card-body") {
+                                    p { +"パスワードをリセットするには、登録済みのメールアドレスを入力してください。" }
+                                    form(action = "/forgot-password", method = FormMethod.post) {
+                                        div(classes = "mb-3") {
+                                            label(classes = "form-label") { +"メールアドレス" }
+                                            emailInput(classes = "form-control") { 
+                                                name = "email"
+                                                placeholder = "メールアドレスを入力してください"
+                                                required = true
+                                            }
+                                        }
+                                        div(classes = "d-grid") {
+                                            submitInput(classes = "btn btn-warning") { value = "リセットメールを送信" }
+                                        }
+                                    }
+                                    hr()
+                                    div(classes = "text-center") {
+                                        a(href = "/login", classes = "btn btn-link") { +"ログイン画面に戻る" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                addFooter()
+            }
+        }
+    }
+    
+    post("/forgot-password") {
+        val params = call.receiveParameters()
+        val email = params["email"] ?: ""
+        
+        if (email.isBlank()) {
+            call.respondHtml(HttpStatusCode.BadRequest) {
+                head { bootstrapHead("エラー") }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"入力エラー" }
+                                    }
+                                    div(classes = "card-body") {
+                                        div(classes = "alert alert-danger") {
+                                            +"メールアドレスは必須です。"
+                                        }
+                                        a(href = "/forgot-password", classes = "btn btn-primary") { +"戻る" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                }
+            }
+            return@post
+        }
+        
+        // Always show success message for security (don't reveal if email exists)
+        val token = userService.requestPasswordReset(email)
+        if (token != null) {
+            emailService.sendPasswordResetEmail(email, token)
+        }
+        
+        call.respondHtml {
+            head { bootstrapHead("メール送信完了") }
+            body(classes = "d-flex flex-column min-vh-100") {
+                addGTMBodyScript()
+                div(classes = "container mt-5") {
+                    div(classes = "row justify-content-center") {
+                        div(classes = "col-md-6") {
+                            div(classes = "card") {
+                                div(classes = "card-header") {
+                                    h1(classes = "card-title mb-0") { +"メール送信完了" }
+                                }
+                                div(classes = "card-body") {
+                                    div(classes = "alert alert-success") {
+                                        +"パスワードリセット用のメールを送信しました。メールを確認してください。"
+                                    }
+                                    p { +"メールが届かない場合は、迷惑メールフォルダを確認してください。" }
+                                    a(href = "/login", classes = "btn btn-primary") { +"ログイン画面へ" }
+                                }
+                            }
+                        }
+                    }
+                }
+                addFooter()
+            }
+        }
+    }
+    
+    get("/reset-password") {
+        val token = call.request.queryParameters["token"] ?: ""
+        
+        if (token.isBlank()) {
+            call.respondRedirect("/login")
+            return@get
+        }
+        
+        call.respondHtml {
+            head { bootstrapHead("新しいパスワード") }
+            body(classes = "d-flex flex-column min-vh-100") {
+                addGTMBodyScript()
+                div(classes = "container mt-5") {
+                    div(classes = "row justify-content-center") {
+                        div(classes = "col-md-6") {
+                            div(classes = "card") {
+                                div(classes = "card-header") {
+                                    h1(classes = "card-title mb-0") { +"新しいパスワードの設定" }
+                                }
+                                div(classes = "card-body") {
+                                    form(action = "/reset-password", method = FormMethod.post) {
+                                        hiddenInput {
+                                            name = "token"
+                                            value = token
+                                        }
+                                        div(classes = "mb-3") {
+                                            label(classes = "form-label") { +"新しいパスワード" }
+                                            passwordInput(classes = "form-control") { 
+                                                name = "password"
+                                                placeholder = "新しいパスワードを入力してください"
+                                                required = true
+                                                minLength = "6"
+                                            }
+                                        }
+                                        div(classes = "mb-3") {
+                                            label(classes = "form-label") { +"パスワード確認" }
+                                            passwordInput(classes = "form-control") { 
+                                                name = "confirmPassword"
+                                                placeholder = "パスワードを再度入力してください"
+                                                required = true
+                                                minLength = "6"
+                                            }
+                                        }
+                                        div(classes = "d-grid") {
+                                            submitInput(classes = "btn btn-success") { value = "パスワードを更新" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                addFooter()
+            }
+        }
+    }
+    
+    post("/reset-password") {
+        val params = call.receiveParameters()
+        val token = params["token"] ?: ""
+        val password = params["password"] ?: ""
+        val confirmPassword = params["confirmPassword"] ?: ""
+        
+        if (token.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+            call.respondHtml(HttpStatusCode.BadRequest) {
+                head { bootstrapHead("エラー") }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"入力エラー" }
+                                    }
+                                    div(classes = "card-body") {
+                                        div(classes = "alert alert-danger") {
+                                            +"すべての項目は必須です。"
+                                        }
+                                        a(href = "/reset-password?token=$token", classes = "btn btn-primary") { +"戻る" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                }
+            }
+            return@post
+        }
+        
+        if (password != confirmPassword) {
+            call.respondHtml(HttpStatusCode.BadRequest) {
+                head { bootstrapHead("エラー") }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"パスワード不一致" }
+                                    }
+                                    div(classes = "card-body") {
+                                        div(classes = "alert alert-danger") {
+                                            +"パスワードが一致しません。"
+                                        }
+                                        a(href = "/reset-password?token=$token", classes = "btn btn-primary") { +"戻る" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                }
+            }
+            return@post
+        }
+        
+        val success = userService.resetPassword(token, password)
+        if (success) {
+            call.respondHtml {
+                head { bootstrapHead("パスワード更新完了") }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"パスワード更新完了" }
+                                    }
+                                    div(classes = "card-body") {
+                                        div(classes = "alert alert-success") {
+                                            +"パスワードが正常に更新されました。"
+                                        }
+                                        a(href = "/login", classes = "btn btn-primary") { +"ログインする" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                }
+            }
+        } else {
+            call.respondHtml(HttpStatusCode.BadRequest) {
+                head { bootstrapHead("エラー") }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"トークンエラー" }
+                                    }
+                                    div(classes = "card-body") {
+                                        div(classes = "alert alert-danger") {
+                                            +"無効なトークンまたは期限が切れています。"
+                                        }
+                                        a(href = "/forgot-password", classes = "btn btn-primary") { +"新しくリセットを申請" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                }
+            }
+        }
     }
 }

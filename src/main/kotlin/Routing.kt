@@ -10,6 +10,7 @@ import com.opendronediary.service.FlightLogService
 import com.opendronediary.service.DailyInspectionRecordService
 import com.opendronediary.service.MaintenanceInspectionRecordService
 import com.opendronediary.service.UserService
+import com.opendronediary.service.EmailService
 import routing.configureTopAndAuthRouting
 import routing.configureFlightLogRouting
 import routing.configureDailyInspectionRouting
@@ -24,9 +25,10 @@ fun Application.configureRouting() {
     val maintenanceInspectionRecordService = MaintenanceInspectionRecordService(maintenanceInspectionRecordRepository)
     val userRepository = UserRepository()
     val userService = UserService(userRepository)
+    val emailService = EmailService()
     
     routing {
-        configureTopAndAuthRouting(userService)
+        configureTopAndAuthRouting(userService, emailService)
         configureFlightLogRouting(flightLogService)
         configureDailyInspectionRouting(dailyInspectionRecordService)
         configureMaintenanceInspectionRouting(maintenanceInspectionRecordService)
