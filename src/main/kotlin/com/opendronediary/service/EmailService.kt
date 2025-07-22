@@ -1,110 +1,108 @@
 package com.opendronediary.service
 
-import com.sendgrid.*
-import com.sendgrid.helpers.mail.Mail
-import com.sendgrid.helpers.mail.objects.Content
-import com.sendgrid.helpers.mail.objects.Email
-import java.io.IOException
+import javax.mail.*
+import javax.mail.internet.*
+import java.util.Properties
 
 class EmailService {
-    private val apiKey = System.getenv("SENDGRID_API_KEY")
-    private val fromEmail = System.getenv("SENDGRID_FROM_EMAIL") ?: "noreply@opendronediary.com"
-    private val fromName = System.getenv("SENDGRID_FROM_NAME") ?: "OpenDroneDiary"
+    private val smtpHost = System.getenv("SMTP_HOST")
+    private val smtpPort = System.getenv("SMTP_PORT") ?: "587"
+    private val smtpUsername = System.getenv("SMTP_USERNAME")
+    private val smtpPassword = System.getenv("SMTP_PASSWORD")
+    private val fromEmail = System.getenv("SMTP_FROM_EMAIL") ?: "noreply@opendronediary.com"
+    private val fromName = System.getenv("SMTP_FROM_NAME") ?: "OpenDroneDiary"
+    private val smtpUseTLS = System.getenv("SMTP_USE_TLS")?.toBoolean() ?: true
+    private val smtpUseSSL = System.getenv("SMTP_USE_SSL")?.toBoolean() ?: false
     private val baseUrl = System.getenv("BASE_URL") ?: "https://opendronediary.herokuapp.com"
     
-    fun sendWelcomeEmail(toEmail: String, username: String): Boolean {
-        if (apiKey.isNullOrEmpty()) {
-            println("SendGrid API key not configured, skipping email send")
-            return true // Return true for development without email
+    private fun createMailSession(): Session? {
+        if (smtpHost.isNullOrEmpty() || smtpUsername.isNullOrEmpty() || smtpPassword.isNullOrEmpty()) {
+            println("SMTP configuration not complete, skipping email send")
+            return null
         }
         
-        val from = Email(fromEmail, fromName)
-        val to = Email(toEmail)
-        val subject = "OpenDroneDiary へようこそ！"
+        val props = Properties().apply {
+            put("mail.smtp.host", smtpHost)
+            put("mail.smtp.port", smtpPort)
+            put("mail.smtp.auth", "true")
+            if (smtpUseTLS) {
+                put("mail.smtp.starttls.enable", "true")
+            }
+            if (smtpUseSSL) {
+                put("mail.smtp.ssl.enable", "true")
+            }
+        }
         
-        val content = Content(
-            "text/html",
-            """
-            <html>
-            <body>
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h1 style="color: #0d6efd;">🛩️ OpenDroneDiary 🚁</h1>
-                    <h2>ユーザー登録が完了しました！</h2>
-                    <p>こんにちは、${username}さん</p>
-                    <p>OpenDroneDiary にご登録いただき、ありがとうございます。</p>
-                    <p>これで、ドローンの飛行日誌を管理できるようになりました。</p>
-                    <p><a href="${baseUrl}" style="background-color: #0d6efd; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">OpenDroneDiary にログイン</a></p>
-                    <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
-                    <p>OpenDroneDiary チーム</p>
-                </div>
-            </body>
-            </html>
-            """.trimIndent()
-        )
-        
-        val mail = Mail(from, subject, to, content)
+        return Session.getInstance(props, object : Authenticator() {
+            override fun getPasswordAuthentication(): PasswordAuthentication {
+                return PasswordAuthentication(smtpUsername, smtpPassword)
+            }
+        })
+    }
+    
+    private fun sendHtmlEmail(toEmail: String, subject: String, htmlContent: String): Boolean {
+        val session = createMailSession() ?: return true // Return true for development without email
         
         return try {
-            val sg = SendGrid(apiKey)
-            val request = Request().apply {
-                method = Method.POST
-                endpoint = "mail/send"
-                body = mail.build()
+            val message = MimeMessage(session).apply {
+                setFrom(InternetAddress(fromEmail, fromName))
+                addRecipient(Message.RecipientType.TO, InternetAddress(toEmail))
+                setSubject(subject, "UTF-8")
+                setContent(htmlContent, "text/html; charset=utf-8")
             }
-            val response = sg.api(request)
-            response.statusCode in 200..299
-        } catch (ex: IOException) {
-            println("Error sending welcome email: ${ex.message}")
+            
+            Transport.send(message)
+            true
+        } catch (ex: Exception) {
+            println("Error sending email: ${ex.message}")
             false
         }
     }
     
+    fun sendWelcomeEmail(toEmail: String, username: String): Boolean {
+        val subject = "OpenDroneDiary へようこそ！"
+        
+        val htmlContent = """
+        <html>
+        <body>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #0d6efd;">🛩️ OpenDroneDiary 🚁</h1>
+                <h2>ユーザー登録が完了しました！</h2>
+                <p>こんにちは、${username}さん</p>
+                <p>OpenDroneDiary にご登録いただき、ありがとうございます。</p>
+                <p>これで、ドローンの飛行日誌を管理できるようになりました。</p>
+                <p><a href="${baseUrl}" style="background-color: #0d6efd; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">OpenDroneDiary にログイン</a></p>
+                <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+                <p>OpenDroneDiary チーム</p>
+            </div>
+        </body>
+        </html>
+        """.trimIndent()
+        
+        return sendHtmlEmail(toEmail, subject, htmlContent)
+    }
+    
     fun sendPasswordResetEmail(toEmail: String, token: String): Boolean {
-        if (apiKey.isNullOrEmpty()) {
-            println("SendGrid API key not configured, skipping email send")
-            return true // Return true for development without email
-        }
-        
-        val from = Email(fromEmail, fromName)
-        val to = Email(toEmail)
         val subject = "パスワードのリセット - OpenDroneDiary"
-        
         val resetUrl = "${baseUrl}/reset-password?token=${token}"
         
-        val content = Content(
-            "text/html",
-            """
-            <html>
-            <body>
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h1 style="color: #0d6efd;">🛩️ OpenDroneDiary 🚁</h1>
-                    <h2>パスワードのリセット</h2>
-                    <p>パスワードのリセットが要求されました。</p>
-                    <p>パスワードをリセットするには、下記のリンクをクリックしてください。</p>
-                    <p><a href="${resetUrl}" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">パスワードをリセット</a></p>
-                    <p>このリンクは24時間有効です。</p>
-                    <p>このメールに心当たりがない場合は、無視してください。</p>
-                    <p>OpenDroneDiary チーム</p>
-                </div>
-            </body>
-            </html>
-            """.trimIndent()
-        )
+        val htmlContent = """
+        <html>
+        <body>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #0d6efd;">🛩️ OpenDroneDiary 🚁</h1>
+                <h2>パスワードのリセット</h2>
+                <p>パスワードのリセットが要求されました。</p>
+                <p>パスワードをリセットするには、下記のリンクをクリックしてください。</p>
+                <p><a href="${resetUrl}" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">パスワードをリセット</a></p>
+                <p>このリンクは24時間有効です。</p>
+                <p>このメールに心当たりがない場合は、無視してください。</p>
+                <p>OpenDroneDiary チーム</p>
+            </div>
+        </body>
+        </html>
+        """.trimIndent()
         
-        val mail = Mail(from, subject, to, content)
-        
-        return try {
-            val sg = SendGrid(apiKey)
-            val request = Request().apply {
-                method = Method.POST
-                endpoint = "mail/send"
-                body = mail.build()
-            }
-            val response = sg.api(request)
-            response.statusCode in 200..299
-        } catch (ex: IOException) {
-            println("Error sending password reset email: ${ex.message}")
-            false
-        }
+        return sendHtmlEmail(toEmail, subject, htmlContent)
     }
 }

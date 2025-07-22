@@ -29,8 +29,9 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages:3.2.2")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
     
-    // SendGrid for email
-    implementation("com.sendgrid:sendgrid-java:4.10.3")
+    // JavaMail for SMTP email
+    implementation("javax.mail:javax.mail-api:1.6.2")
+    implementation("com.sun.mail:javax.mail:1.6.2")
     
     // Database dependencies
     implementation("org.jetbrains.exposed:exposed-core:0.50.1")
