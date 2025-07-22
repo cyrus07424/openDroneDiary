@@ -5,6 +5,7 @@ import com.opendronediary.database.FlightLogs
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.LocalDateTime
 
 class FlightLogRepository {
     
@@ -25,7 +26,9 @@ class FlightLogRepository {
                     takeoffTime = it[FlightLogs.takeoffTime],
                     landingTime = it[FlightLogs.landingTime],
                     flightSummary = it[FlightLogs.flightSummary],
-                    totalFlightTime = it[FlightLogs.totalFlightTime]
+                    totalFlightTime = it[FlightLogs.totalFlightTime],
+                    createdAt = it[FlightLogs.createdAt],
+                    updatedAt = it[FlightLogs.updatedAt]
                 )
             }
     }
@@ -47,13 +50,16 @@ class FlightLogRepository {
                     takeoffTime = it[FlightLogs.takeoffTime],
                     landingTime = it[FlightLogs.landingTime],
                     flightSummary = it[FlightLogs.flightSummary],
-                    totalFlightTime = it[FlightLogs.totalFlightTime]
+                    totalFlightTime = it[FlightLogs.totalFlightTime],
+                    createdAt = it[FlightLogs.createdAt],
+                    updatedAt = it[FlightLogs.updatedAt]
                 )
             }
             .singleOrNull()
     }
 
     fun add(flightLog: FlightLog): FlightLog = transaction {
+        val now = LocalDateTime.now()
         val insertedId = FlightLogs.insert {
             it[flightDate] = flightLog.flightDate
             it[takeoffLandingLocation] = flightLog.takeoffLandingLocation
@@ -68,8 +74,10 @@ class FlightLogRepository {
             it[landingTime] = flightLog.landingTime
             it[flightSummary] = flightLog.flightSummary
             it[totalFlightTime] = flightLog.totalFlightTime
+            it[createdAt] = now
+            it[updatedAt] = now
         } get FlightLogs.id
-        flightLog.copy(id = insertedId)
+        flightLog.copy(id = insertedId, createdAt = now, updatedAt = now)
     }
 
     fun update(id: Int, flightLog: FlightLog, userId: Int): Boolean = transaction {
@@ -88,6 +96,7 @@ class FlightLogRepository {
             it[landingTime] = flightLog.landingTime
             it[flightSummary] = flightLog.flightSummary
             it[totalFlightTime] = flightLog.totalFlightTime
+            it[updatedAt] = LocalDateTime.now()
         }
         updateCount > 0
     }
