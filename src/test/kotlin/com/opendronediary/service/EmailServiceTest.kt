@@ -8,20 +8,20 @@ import kotlin.test.assertFalse
 class EmailServiceTest {
     
     @Test
-    fun testSendWelcomeEmailWithoutApiKey() {
+    fun testSendWelcomeEmailWithoutSmtpConfiguration() {
         val emailService = EmailService()
         
-        // Without API key configured, should return true (graceful handling)
+        // Without SMTP configuration, should return true (graceful handling)
         val result = emailService.sendWelcomeEmail("test@example.com", "testuser")
-        assertTrue(result, "Welcome email should succeed even without API key in development")
+        assertTrue(result, "Welcome email should succeed even without SMTP configuration in development")
     }
     
     @Test
-    fun testSendPasswordResetEmailWithoutApiKey() {
+    fun testSendPasswordResetEmailWithoutSmtpConfiguration() {
         val emailService = EmailService()
         
-        // Without API key configured, should return true (graceful handling)
+        // Without SMTP configuration, should return true (graceful handling)
         val result = emailService.sendPasswordResetEmail("test@example.com", "dummy-token")
-        assertTrue(result, "Password reset email should succeed even without API key in development")
+        assertTrue(result, "Password reset email should succeed even without SMTP configuration in development")
     }
 }
