@@ -8,11 +8,13 @@ import io.ktor.http.*
 import com.opendronediary.model.MaintenanceInspectionRecord
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.MaintenanceInspectionRecordService
+import com.opendronediary.service.SlackService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMBodyScript
+import utils.RequestContextHelper
 
-fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordService: MaintenanceInspectionRecordService) {
+fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordService: MaintenanceInspectionRecordService, slackService: SlackService) {
     // Maintenance Inspection Record UI routes
     route("/maintenanceinspections/ui") {
         get {
@@ -270,11 +272,41 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                 val inspectorName = params["inspectorName"] ?: ""
                 val contentAndReason = params["contentAndReason"] ?: ""
                 val created = maintenanceInspectionRecordService.add(MaintenanceInspectionRecord(0, inspectionDate, location, inspectorName, contentAndReason, session.userId))
-                call.respondRedirect("/maintenanceinspections/ui")
+                
+                // Send Slack notification for maintenance inspection creation
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "点検整備記録作成",
+                        username = session.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "点検日: $inspectionDate, 点検者: $inspectorName"
+                    )
+                } catch (e: Exception) {
+                    println("Error: " + "Failed to send Slack notification for maintenance inspection creation" + ": " + e.message)
+                }
+                
             } else {
                 val record = call.receive<MaintenanceInspectionRecord>()
                 val created = maintenanceInspectionRecordService.add(record.copy(userId = session.userId))
-                call.respond(HttpStatusCode.Created, created)
+                
+                // Send Slack notification for API maintenance inspection creation
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "点検整備記録作成 (API)",
+                        username = session.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "点検日: ${record.inspectionDate}, 点検者: ${record.inspectorName}"
+                    )
+                } catch (e: Exception) {
+                    println("Error: " + "Failed to send Slack notification for API maintenance inspection creation" + ": " + e.message)
+                }
+                
             }
         }
     }

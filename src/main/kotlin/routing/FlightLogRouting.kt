@@ -8,12 +8,14 @@ import io.ktor.http.*
 import com.opendronediary.model.FlightLog
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.FlightLogService
+import com.opendronediary.service.SlackService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMBodyScript
 import utils.PolicyHelper.addFooter
+import utils.RequestContextHelper
 
-fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
+fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService) {
     // 飛行記録 CRUD - Authentication required
     route("/flightlogs") {
         get {
@@ -80,10 +82,41 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
                     flightSummary = flightSummary,
                     totalFlightTime = totalFlightTime
                 ))
-                call.respondRedirect("/flightlogs/ui")
+                
+                // Send Slack notification for flight log creation
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "飛行記録作成",
+                        username = session.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "飛行日: $flightDate, パイロット: $pilotName"
+                    )
+                } catch (e: Exception) {
+                    println("Error: " + "Failed to send Slack notification for flight log creation" + ": " + e.message)
+                }
+                
             } else {
                 val flightLog = call.receive<FlightLog>()
                 val created = flightLogService.add(flightLog.copy(userId = session.userId))
+                
+                // Send Slack notification for API flight log creation
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "飛行記録作成 (API)",
+                        username = session.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "飛行日: ${flightLog.flightDate}, パイロット: ${flightLog.pilotName}"
+                    )
+                } catch (e: Exception) {
+                    println("Error: " + "Failed to send Slack notification for API flight log creation" + ": " + e.message)
+                }
+                
                 call.respond(HttpStatusCode.Created, created)
             }
         }
@@ -96,6 +129,21 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService) {
             val id = call.parameters["id"]?.toIntOrNull()
             val flightLog = call.receive<FlightLog>()
             if (id != null && flightLogService.update(id, flightLog, session.userId)) {
+                // Send Slack notification for flight log update
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "飛行記録更新",
+                        username = session.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "ID: $id, 飛行日: ${flightLog.flightDate}"
+                    )
+                } catch (e: Exception) {
+                    println("Error: " + "Failed to send Slack notification for flight log update" + ": " + e.message)
+                }
+                
                 call.respond(HttpStatusCode.OK)
             } else {
                 call.respond(HttpStatusCode.NotFound)

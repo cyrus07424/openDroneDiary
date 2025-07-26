@@ -9,6 +9,7 @@ import io.ktor.http.*
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.UserService
 import com.opendronediary.service.EmailService
+import com.opendronediary.service.SlackService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMHeadScript
@@ -16,6 +17,7 @@ import utils.GTMHelper.addGTMBodyScript
 import utils.PolicyHelper.addFooter
 import utils.PolicyHelper.isTermsOfServiceEnabled
 import utils.PolicyHelper.getTermsOfServiceUrl
+import utils.RequestContextHelper
 
 // Helper function to create Bootstrap head with CDN links
 fun HEAD.bootstrapHead(pageTitle: String) {
@@ -27,7 +29,7 @@ fun HEAD.bootstrapHead(pageTitle: String) {
     addGTMHeadScript()
 }
 
-fun Route.configureTopAndAuthRouting(userService: UserService, emailService: EmailService) {
+fun Route.configureTopAndAuthRouting(userService: UserService, emailService: EmailService, slackService: SlackService) {
     get("/") {
         val session = call.sessions.get<UserSession>()
         call.respondHtml {
@@ -126,6 +128,22 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
         val user = userService.login(username, password)
         if (user != null) {
             call.sessions.set(UserSession(user.id, user.username))
+            
+            // Send Slack notification for successful login
+            try {
+                val userAgent = RequestContextHelper.extractUserAgent(call)
+                val ipAddress = RequestContextHelper.extractIpAddress(call)
+                slackService.sendNotification(
+                    action = "ユーザーログイン",
+                    username = user.username,
+                    userAgent = userAgent,
+                    ipAddress = ipAddress
+                )
+            } catch (e: Exception) {
+                // Log error but don't fail the login process
+                call.application.log.error("Failed to send Slack notification for login", e)
+            }
+            
             call.respondRedirect("/")
         } else {
             call.respondHtml(HttpStatusCode.Unauthorized) {
@@ -299,6 +317,22 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
         if (user != null) {
             // Send welcome email
             emailService.sendWelcomeEmail(email, username)
+            
+            // Send Slack notification for new user registration
+            try {
+                val userAgent = RequestContextHelper.extractUserAgent(call)
+                val ipAddress = RequestContextHelper.extractIpAddress(call)
+                slackService.sendNotification(
+                    action = "新規ユーザー登録",
+                    username = user.username,
+                    userAgent = userAgent,
+                    ipAddress = ipAddress,
+                    additionalInfo = "メールアドレス: $email"
+                )
+            } catch (e: Exception) {
+                // Log error but don't fail the registration process
+                call.application.log.error("Failed to send Slack notification for registration", e)
+            }
             
             call.sessions.set(UserSession(user.id, user.username))
             call.respondRedirect("/")
