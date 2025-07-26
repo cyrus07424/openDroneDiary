@@ -47,6 +47,11 @@ dependencies {
     // bcrypt for password hashing
     implementation("org.mindrot:jbcrypt:0.4")
     
+    // HTTP client for Slack notifications
+    implementation("io.ktor:ktor-client-core:3.2.2")
+    implementation("io.ktor:ktor-client-cio:3.2.2")
+    implementation("io.ktor:ktor-client-content-negotiation:3.2.2")
+    
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 }

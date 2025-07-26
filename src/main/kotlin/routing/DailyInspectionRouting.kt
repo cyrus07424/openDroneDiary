@@ -8,11 +8,13 @@ import io.ktor.http.*
 import com.opendronediary.model.DailyInspectionRecord
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.DailyInspectionRecordService
+import com.opendronediary.service.SlackService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMBodyScript
+import utils.RequestContextHelper
 
-fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyInspectionRecordService) {
+fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyInspectionRecordService, slackService: SlackService) {
     // Daily Inspection Record UI routes
     route("/dailyinspections/ui") {
         get {
@@ -270,11 +272,41 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                 val inspectorName = params["inspectorName"] ?: ""
                 val inspectionResult = params["inspectionResult"] ?: ""
                 val created = dailyInspectionRecordService.add(DailyInspectionRecord(0, inspectionDate, location, inspectorName, inspectionResult, session.userId))
-                call.respondRedirect("/dailyinspections/ui")
+                
+                // Send Slack notification for daily inspection creation
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "日常点検記録作成",
+                        username = session.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "点検日: $inspectionDate, 点検者: $inspectorName"
+                    )
+                } catch (e: Exception) {
+                    println("Error: " + "Failed to send Slack notification for daily inspection creation" + ": " + e.message)
+                }
+                
             } else {
                 val record = call.receive<DailyInspectionRecord>()
                 val created = dailyInspectionRecordService.add(record.copy(userId = session.userId))
-                call.respond(HttpStatusCode.Created, created)
+                
+                // Send Slack notification for API daily inspection creation
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "日常点検記録作成 (API)",
+                        username = session.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "点検日: ${record.inspectionDate}, 点検者: ${record.inspectorName}"
+                    )
+                } catch (e: Exception) {
+                    println("Error: " + "Failed to send Slack notification for API daily inspection creation" + ": " + e.message)
+                }
+                
             }
         }
     }
