@@ -1,12 +1,15 @@
 package com.opendronediary.model
 
 import kotlinx.serialization.Serializable
+import java.time.LocalDateTime
 
 data class User(
     val id: Int,
     val username: String,
     val passwordHash: String,
-    val email: String? = null
+    val email: String? = null,
+    val createdAt: LocalDateTime? = null,
+    val updatedAt: LocalDateTime? = null
 )
 
 @Serializable

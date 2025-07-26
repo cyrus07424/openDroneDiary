@@ -5,6 +5,7 @@ import com.opendronediary.database.MaintenanceInspectionRecords
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.LocalDateTime
 
 class MaintenanceInspectionRecordRepository {
     
@@ -17,7 +18,9 @@ class MaintenanceInspectionRecordRepository {
                     location = it[MaintenanceInspectionRecords.location],
                     inspectorName = it[MaintenanceInspectionRecords.inspectorName],
                     contentAndReason = it[MaintenanceInspectionRecords.contentAndReason],
-                    userId = it[MaintenanceInspectionRecords.userId]
+                    userId = it[MaintenanceInspectionRecords.userId],
+                    createdAt = it[MaintenanceInspectionRecords.createdAt],
+                    updatedAt = it[MaintenanceInspectionRecords.updatedAt]
                 )
             }
     }
@@ -31,21 +34,26 @@ class MaintenanceInspectionRecordRepository {
                     location = it[MaintenanceInspectionRecords.location],
                     inspectorName = it[MaintenanceInspectionRecords.inspectorName],
                     contentAndReason = it[MaintenanceInspectionRecords.contentAndReason],
-                    userId = it[MaintenanceInspectionRecords.userId]
+                    userId = it[MaintenanceInspectionRecords.userId],
+                    createdAt = it[MaintenanceInspectionRecords.createdAt],
+                    updatedAt = it[MaintenanceInspectionRecords.updatedAt]
                 )
             }
             .singleOrNull()
     }
 
     fun add(maintenanceInspectionRecord: MaintenanceInspectionRecord): MaintenanceInspectionRecord = transaction {
+        val now = LocalDateTime.now()
         val insertedId = MaintenanceInspectionRecords.insert {
             it[inspectionDate] = maintenanceInspectionRecord.inspectionDate
             it[location] = maintenanceInspectionRecord.location
             it[inspectorName] = maintenanceInspectionRecord.inspectorName
             it[contentAndReason] = maintenanceInspectionRecord.contentAndReason
             it[userId] = maintenanceInspectionRecord.userId
+            it[createdAt] = now
+            it[updatedAt] = now
         } get MaintenanceInspectionRecords.id
-        maintenanceInspectionRecord.copy(id = insertedId)
+        maintenanceInspectionRecord.copy(id = insertedId, createdAt = now, updatedAt = now)
     }
 
     fun update(id: Int, maintenanceInspectionRecord: MaintenanceInspectionRecord, userId: Int): Boolean = transaction {
@@ -56,6 +64,7 @@ class MaintenanceInspectionRecordRepository {
             it[location] = maintenanceInspectionRecord.location
             it[inspectorName] = maintenanceInspectionRecord.inspectorName
             it[contentAndReason] = maintenanceInspectionRecord.contentAndReason
+            it[updatedAt] = LocalDateTime.now()
         }
         updateCount > 0
     }
