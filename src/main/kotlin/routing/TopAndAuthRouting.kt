@@ -85,10 +85,10 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                 div(classes = "card-body") {
                                     form(action = "/login", method = FormMethod.post) {
                                         div(classes = "mb-3") {
-                                            label(classes = "form-label") { +"ユーザー名" }
-                                            textInput(classes = "form-control") { 
-                                                name = "username"
-                                                placeholder = "ユーザー名を入力してください"
+                                            label(classes = "form-label") { +"メールアドレス" }
+                                            emailInput(classes = "form-control") { 
+                                                name = "email"
+                                                placeholder = "メールアドレスを入力してください"
                                                 required = true
                                             }
                                         }
@@ -122,10 +122,10 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
     
     post("/login") {
         val params = call.receiveParameters()
-        val username = params["username"] ?: ""
+        val email = params["email"] ?: ""
         val password = params["password"] ?: ""
         
-        val user = userService.login(username, password)
+        val user = userService.loginByEmail(email, password)
         if (user != null) {
             call.sessions.set(UserSession(user.id, user.username))
             
@@ -159,7 +159,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                     }
                                     div(classes = "card-body") {
                                         div(classes = "alert alert-danger") {
-                                            +"ユーザー名またはパスワードが間違っています。"
+                                            +"メールアドレスまたはパスワードが間違っています。"
                                         }
                                         a(href = "/login", classes = "btn btn-primary") { +"戻る" }
                                     }
