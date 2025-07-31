@@ -212,6 +212,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                     div(classes = "card-header d-flex justify-content-between align-items-center") {
                                         h1(classes = "card-title mb-0") { +"飛行記録一覧" }
                                         div {
+                                            a(href = "/flightlogs/ui/heatmap", classes = "btn btn-outline-warning btn-sm me-2") { +"🗺️ ヒートマップ" }
                                             a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
                                             a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
                                             a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
@@ -241,12 +242,19 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                                 td { +flightLog.flightDate }
                                                                 td { 
                                                                     // Use new fields if available, fallback to legacy field
-                                                                    val location = if (!flightLog.takeoffLocation.isNullOrEmpty() && !flightLog.landingLocation.isNullOrEmpty()) {
-                                                                        "${flightLog.takeoffLocation} → ${flightLog.landingLocation}"
+                                                                    if (!flightLog.takeoffLocation.isNullOrEmpty() && !flightLog.landingLocation.isNullOrEmpty()) {
+                                                                        +"${flightLog.takeoffLocation} → ${flightLog.landingLocation}"
+                                                                        if (flightLog.takeoffInputType == "coordinates" && 
+                                                                            flightLog.takeoffLatitude != null && flightLog.takeoffLongitude != null &&
+                                                                            flightLog.landingLatitude != null && flightLog.landingLongitude != null) {
+                                                                            br()
+                                                                            small(classes = "text-muted") { 
+                                                                                +"📍 座標: (${flightLog.takeoffLatitude?.toPlainString()?.take(8)}, ${flightLog.takeoffLongitude?.toPlainString()?.take(8)}) → (${flightLog.landingLatitude?.toPlainString()?.take(8)}, ${flightLog.landingLongitude?.toPlainString()?.take(8)})"
+                                                                            }
+                                                                        }
                                                                     } else {
-                                                                        flightLog.takeoffLandingLocation ?: "未設定"
+                                                                        +(flightLog.takeoffLandingLocation ?: "未設定")
                                                                     }
-                                                                    +location
                                                                 }
                                                                 td { 
                                                                     // Use new fields if available, fallback to legacy field
@@ -602,6 +610,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                         h1(classes = "card-title mb-0") { +"📅 飛行記録 - カレンダー表示" }
                                         div {
                                             a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
+                                            a(href = "/flightlogs/ui/heatmap", classes = "btn btn-outline-warning btn-sm me-2") { +"🗺️ ヒートマップ" }
                                             a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
                                             a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
                                         }
@@ -773,6 +782,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                         h1(classes = "card-title mb-0") { +"📊 飛行記録 - タイムライン表示" }
                                         div {
                                             a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
+                                            a(href = "/flightlogs/ui/heatmap", classes = "btn btn-outline-warning btn-sm me-2") { +"🗺️ ヒートマップ" }
                                             a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
                                             a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
                                         }
@@ -798,10 +808,24 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                                             p(classes = "mb-2") {
                                                                                 strong { +"🛫 離陸場所: " }
                                                                                 +flightLog.takeoffLocation
+                                                                                if (flightLog.takeoffInputType == "coordinates" && 
+                                                                                    flightLog.takeoffLatitude != null && flightLog.takeoffLongitude != null) {
+                                                                                    br()
+                                                                                    small(classes = "text-muted") { 
+                                                                                        +"📍 (${flightLog.takeoffLatitude?.toPlainString()?.take(8)}, ${flightLog.takeoffLongitude?.toPlainString()?.take(8)})"
+                                                                                    }
+                                                                                }
                                                                             }
                                                                             p(classes = "mb-2") {
                                                                                 strong { +"🛬 着陸場所: " }
                                                                                 +flightLog.landingLocation
+                                                                                if (flightLog.landingInputType == "coordinates" && 
+                                                                                    flightLog.landingLatitude != null && flightLog.landingLongitude != null) {
+                                                                                    br()
+                                                                                    small(classes = "text-muted") { 
+                                                                                        +"📍 (${flightLog.landingLatitude?.toPlainString()?.take(8)}, ${flightLog.landingLongitude?.toPlainString()?.take(8)})"
+                                                                                    }
+                                                                                }
                                                                             }
                                                                         } else if (!flightLog.takeoffLandingLocation.isNullOrEmpty()) {
                                                                             p(classes = "mb-2") {
@@ -881,6 +905,164 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                         }
                     }
                     addFooter()
+                }
+            }
+        }
+        
+        // Heat map view
+        get("/heatmap") {
+            val session = call.sessions.get<UserSession>()
+            if (session == null) {
+                call.respondRedirect("/login")
+                return@get
+            }
+            val flightLogs = flightLogService.getAllByUserId(session.userId)
+                .filter { it.takeoffInputType == "coordinates" && it.landingInputType == "coordinates" &&
+                         it.takeoffLatitude != null && it.takeoffLongitude != null &&
+                         it.landingLatitude != null && it.landingLongitude != null }
+            call.respondHtml {
+                head { 
+                    bootstrapHead("飛行記録 - ヒートマップ表示")
+                    // Add Leaflet CSS and JS for heatmap functionality
+                    link(rel = "stylesheet", href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css")
+                    script(src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js") {}
+                    script(src = "https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js") {}
+                }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
+                        div(classes = "container") {
+                            a(href = "/", classes = "navbar-brand") { +"🛩️ OpenDroneDiary" }
+                            div(classes = "navbar-nav ms-auto") {
+                                span(classes = "navbar-text me-3") { +"ログイン中: ${session.username}" }
+                                a(href = "/logout", classes = "btn btn-outline-light btn-sm") { +"ログアウト" }
+                            }
+                        }
+                    }
+                    div(classes = "container mt-4") {
+                        div(classes = "row") {
+                            div(classes = "col-12") {
+                                div(classes = "card") {
+                                    div(classes = "card-header d-flex justify-content-between align-items-center") {
+                                        h1(classes = "card-title mb-0") { +"🗺️ 飛行記録 - ヒートマップ表示" }
+                                        div {
+                                            a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
+                                            a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
+                                            a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
+                                            a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
+                                        }
+                                    }
+                                    div(classes = "card-body") {
+                                        if (flightLogs.isEmpty()) {
+                                            div(classes = "alert alert-warning") { 
+                                                +"座標データが登録された飛行記録がありません。地図上で座標入力を行った飛行記録を作成すると、ここにヒートマップが表示されます。" 
+                                            }
+                                        } else {
+                                            div(classes = "alert alert-info mb-3") {
+                                                strong { +"表示データ: " }
+                                                +"座標入力された飛行記録 ${flightLogs.size} 件のヒートマップ"
+                                            }
+                                        }
+                                        div(classes = "") {
+                                            id = "heatmapContainer"
+                                            style = "height: 600px; width: 100%;"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                    
+                    // Heatmap initialization script
+                    script {
+                        unsafe {
+                            +"""
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const mapContainer = document.getElementById('heatmapContainer');
+                                    
+                                    // Default location (Tokyo Station)
+                                    const defaultLat = 35.6812;
+                                    const defaultLng = 139.7671;
+                                    
+                                    // Initialize map
+                                    const map = L.map('heatmapContainer').setView([defaultLat, defaultLng], 10);
+                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                        attribution: '© OpenStreetMap contributors'
+                                    }).addTo(map);
+                                    
+                                    // Prepare heat map data
+                                    const heatData = [];
+                                    const markers = [];
+                            """.trimIndent()
+                        }
+                        
+                        // Generate heat map data from flight logs with coordinates
+                        flightLogs.forEach { flightLog ->
+                            unsafe {
+                                +"""
+                                    // Add takeoff location
+                                    heatData.push([${flightLog.takeoffLatitude}, ${flightLog.takeoffLongitude}, 0.8]);
+                                    markers.push({
+                                        lat: ${flightLog.takeoffLatitude},
+                                        lng: ${flightLog.takeoffLongitude},
+                                        type: 'takeoff',
+                                        date: '${flightLog.flightDate}',
+                                        pilot: '${flightLog.pilotName}'
+                                    });
+                                    
+                                    // Add landing location
+                                    heatData.push([${flightLog.landingLatitude}, ${flightLog.landingLongitude}, 0.8]);
+                                    markers.push({
+                                        lat: ${flightLog.landingLatitude},
+                                        lng: ${flightLog.landingLongitude},
+                                        type: 'landing',
+                                        date: '${flightLog.flightDate}',
+                                        pilot: '${flightLog.pilotName}'
+                                    });
+                                """.trimIndent()
+                            }
+                        }
+                        
+                        unsafe {
+                            +"""
+                                    // Add heat layer if we have data
+                                    if (heatData.length > 0) {
+                                        const heat = L.heatLayer(heatData, {
+                                            radius: 25,
+                                            blur: 15,
+                                            maxZoom: 17,
+                                            gradient: {0.4: 'blue', 0.6: 'cyan', 0.8: 'lime', 1.0: 'red'}
+                                        }).addTo(map);
+                                        
+                                        // Add individual markers for detail
+                                        markers.forEach(function(marker) {
+                                            const icon = marker.type === 'takeoff' ? '🛫' : '🛬';
+                                            const color = marker.type === 'takeoff' ? 'green' : 'red';
+                                            
+                                            L.marker([marker.lat, marker.lng]).addTo(map)
+                                                .bindPopup(icon + ' ' + marker.type.charAt(0).toUpperCase() + marker.type.slice(1) + 
+                                                          '<br>日付: ' + marker.date + 
+                                                          '<br>操縦者: ' + marker.pilot);
+                                        });
+                                        
+                                        // Auto-fit map to show all markers
+                                        if (markers.length > 0) {
+                                            const group = new L.featureGroup(map._layers);
+                                            if (group.getBounds().isValid()) {
+                                                map.fitBounds(group.getBounds(), {padding: [20, 20]});
+                                            }
+                                        }
+                                    } else {
+                                        // No coordinate data available, show default view
+                                        L.marker([defaultLat, defaultLng]).addTo(map)
+                                            .bindPopup('座標データが登録された飛行記録がありません<br>地図上で座標入力を行った飛行記録を作成してください')
+                                            .openPopup();
+                                    }
+                                });
+                            """.trimIndent()
+                        }
+                    }
                 }
             }
         }
