@@ -267,7 +267,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                         h2(classes = "card-title mb-0") { +"新規飛行記録作成" }
                                     }
                                     div(classes = "card-body") {
-                                        form(action = "/flightlogs", method = FormMethod.post) {
+                                        form(action = "/flightlogs/ui", method = FormMethod.post) {
                                             div(classes = "row") {
                                                 div(classes = "col-md-6 mb-3") {
                                                     label(classes = "form-label") { +"飛行年月日" }
