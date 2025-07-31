@@ -27,6 +27,12 @@ class FlightLogRepository {
                     landingTime = it[FlightLogs.landingTime],
                     flightSummary = it[FlightLogs.flightSummary],
                     totalFlightTime = it[FlightLogs.totalFlightTime],
+                    takeoffInputType = it[FlightLogs.takeoffInputType],
+                    landingInputType = it[FlightLogs.landingInputType],
+                    takeoffLatitude = it[FlightLogs.takeoffLatitude],
+                    takeoffLongitude = it[FlightLogs.takeoffLongitude],
+                    landingLatitude = it[FlightLogs.landingLatitude],
+                    landingLongitude = it[FlightLogs.landingLongitude],
                     createdAt = it[FlightLogs.createdAt],
                     updatedAt = it[FlightLogs.updatedAt]
                 )
@@ -51,6 +57,12 @@ class FlightLogRepository {
                     landingTime = it[FlightLogs.landingTime],
                     flightSummary = it[FlightLogs.flightSummary],
                     totalFlightTime = it[FlightLogs.totalFlightTime],
+                    takeoffInputType = it[FlightLogs.takeoffInputType],
+                    landingInputType = it[FlightLogs.landingInputType],
+                    takeoffLatitude = it[FlightLogs.takeoffLatitude],
+                    takeoffLongitude = it[FlightLogs.takeoffLongitude],
+                    landingLatitude = it[FlightLogs.landingLatitude],
+                    landingLongitude = it[FlightLogs.landingLongitude],
                     createdAt = it[FlightLogs.createdAt],
                     updatedAt = it[FlightLogs.updatedAt]
                 )
@@ -74,6 +86,12 @@ class FlightLogRepository {
             it[landingTime] = flightLog.landingTime
             it[flightSummary] = flightLog.flightSummary
             it[totalFlightTime] = flightLog.totalFlightTime
+            it[takeoffInputType] = flightLog.takeoffInputType
+            it[landingInputType] = flightLog.landingInputType
+            it[takeoffLatitude] = flightLog.takeoffLatitude
+            it[takeoffLongitude] = flightLog.takeoffLongitude
+            it[landingLatitude] = flightLog.landingLatitude
+            it[landingLongitude] = flightLog.landingLongitude
             it[createdAt] = now
             it[updatedAt] = now
         } get FlightLogs.id
@@ -96,6 +114,12 @@ class FlightLogRepository {
             it[landingTime] = flightLog.landingTime
             it[flightSummary] = flightLog.flightSummary
             it[totalFlightTime] = flightLog.totalFlightTime
+            it[takeoffInputType] = flightLog.takeoffInputType
+            it[landingInputType] = flightLog.landingInputType
+            it[takeoffLatitude] = flightLog.takeoffLatitude
+            it[takeoffLongitude] = flightLog.takeoffLongitude
+            it[landingLatitude] = flightLog.landingLatitude
+            it[landingLongitude] = flightLog.landingLongitude
             it[updatedAt] = LocalDateTime.now()
         }
         updateCount > 0

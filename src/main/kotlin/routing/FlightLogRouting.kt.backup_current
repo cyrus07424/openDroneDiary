@@ -67,14 +67,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 val takeoffLandingTime = params["takeoffLandingTime"]
                 val flightDuration = params["flightDuration"]
                 
-                // Handle coordinate fields
-                val takeoffInputType = params["takeoffInputType"] ?: "text"
-                val landingInputType = params["landingInputType"] ?: "text"
-                val takeoffLatitude = params["takeoffLatitude"]?.toBigDecimalOrNull()
-                val takeoffLongitude = params["takeoffLongitude"]?.toBigDecimalOrNull()
-                val landingLatitude = params["landingLatitude"]?.toBigDecimalOrNull()
-                val landingLongitude = params["landingLongitude"]?.toBigDecimalOrNull()
-                
                 val created = flightLogService.add(FlightLog(
                     id = 0, 
                     flightDate = flightDate, 
@@ -89,13 +81,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffTime = takeoffTime,
                     landingTime = landingTime,
                     flightSummary = flightSummary,
-                    totalFlightTime = totalFlightTime,
-                    takeoffInputType = takeoffInputType,
-                    landingInputType = landingInputType,
-                    takeoffLatitude = takeoffLatitude,
-                    takeoffLongitude = takeoffLongitude,
-                    landingLatitude = landingLatitude,
-                    landingLongitude = landingLongitude
+                    totalFlightTime = totalFlightTime
                 ))
                 
                 // Send Slack notification for flight log creation
@@ -188,12 +174,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
             }
             val flightLogs = flightLogService.getAllByUserId(session.userId)
             call.respondHtml {
-                head { 
-                    bootstrapHead("飛行記録一覧")
-                    // Add Leaflet CSS and JS for map functionality
-                    link(rel = "stylesheet", href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css")
-                    script(src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js") {}
-                }
+                head { bootstrapHead("飛行記録一覧") }
                 body(classes = "d-flex flex-column min-vh-100") {
                     addGTMBodyScript()
                     nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
@@ -212,7 +193,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                     div(classes = "card-header d-flex justify-content-between align-items-center") {
                                         h1(classes = "card-title mb-0") { +"飛行記録一覧" }
                                         div {
-                                            a(href = "/flightlogs/ui/heatmap", classes = "btn btn-outline-warning btn-sm me-2") { +"🗺️ ヒートマップ" }
                                             a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
                                             a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
                                             a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
@@ -242,19 +222,12 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                                 td { +flightLog.flightDate }
                                                                 td { 
                                                                     // Use new fields if available, fallback to legacy field
-                                                                    if (!flightLog.takeoffLocation.isNullOrEmpty() && !flightLog.landingLocation.isNullOrEmpty()) {
-                                                                        +"${flightLog.takeoffLocation} → ${flightLog.landingLocation}"
-                                                                        if (flightLog.takeoffInputType == "coordinates" && 
-                                                                            flightLog.takeoffLatitude != null && flightLog.takeoffLongitude != null &&
-                                                                            flightLog.landingLatitude != null && flightLog.landingLongitude != null) {
-                                                                            br()
-                                                                            small(classes = "text-muted") { 
-                                                                                +"📍 座標: (${flightLog.takeoffLatitude?.toPlainString()?.take(8)}, ${flightLog.takeoffLongitude?.toPlainString()?.take(8)}) → (${flightLog.landingLatitude?.toPlainString()?.take(8)}, ${flightLog.landingLongitude?.toPlainString()?.take(8)})"
-                                                                            }
-                                                                        }
+                                                                    val location = if (!flightLog.takeoffLocation.isNullOrEmpty() && !flightLog.landingLocation.isNullOrEmpty()) {
+                                                                        "${flightLog.takeoffLocation} → ${flightLog.landingLocation}"
                                                                     } else {
-                                                                        +(flightLog.takeoffLandingLocation ?: "未設定")
+                                                                        flightLog.takeoffLandingLocation ?: "未設定"
                                                                     }
+                                                                    +location
                                                                 }
                                                                 td { 
                                                                     // Use new fields if available, fallback to legacy field
@@ -314,109 +287,21 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                     }
                                                 }
                                             }
-                                            // Enhanced location input section
                                             div(classes = "row") {
-                                                div(classes = "col-12 mb-4") {
-                                                    div(classes = "card border-info") {
-                                                        div(classes = "card-header bg-info text-white") {
-                                                            h5(classes = "mb-0") { +"📍 離陸・着陸場所の入力方法" }
-                                                        }
-                                                        div(classes = "card-body") {
-                                                            // Radio button selection
-                                                            div(classes = "row mb-3") {
-                                                                div(classes = "col-md-6") {
-                                                                    div(classes = "form-check") {
-                                                                        radioInput(classes = "form-check-input", name = "locationInputMethod") {
-                                                                            value = "text"
-                                                                            id = "inputMethodText"
-                                                                            checked = true
-                                                                            attributes["onchange"] = "toggleLocationInputMethod()"
-                                                                        }
-                                                                        label(classes = "form-check-label") {
-                                                                            htmlFor = "inputMethodText"
-                                                                            +"テキスト入力"
-                                                                        }
-                                                                    }
-                                                                }
-                                                                div(classes = "col-md-6") {
-                                                                    div(classes = "form-check") {
-                                                                        radioInput(classes = "form-check-input", name = "locationInputMethod") {
-                                                                            value = "coordinates"
-                                                                            id = "inputMethodCoordinates"
-                                                                            attributes["onchange"] = "toggleLocationInputMethod()"
-                                                                        }
-                                                                        label(classes = "form-check-label") {
-                                                                            htmlFor = "inputMethodCoordinates"
-                                                                            +"地図上で座標入力"
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                            
-                                                            // Text input section
-                                                            div(classes = "") {
-                                                                id = "textInputSection"
-                                                                div(classes = "row") {
-                                                                    div(classes = "col-md-6 mb-3") {
-                                                                        label(classes = "form-label") { +"離陸場所" }
-                                                                        textInput(classes = "form-control", name = "takeoffLocation") { 
-                                                                            id = "takeoffLocationText"
-                                                                            placeholder = "離陸場所を入力してください"
-                                                                        }
-                                                                    }
-                                                                    div(classes = "col-md-6 mb-3") {
-                                                                        label(classes = "form-label") { +"着陸場所" }
-                                                                        textInput(classes = "form-control", name = "landingLocation") { 
-                                                                            id = "landingLocationText"
-                                                                            placeholder = "着陸場所を入力してください"
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                            
-                                                            // Map input section
-                                                            div(classes = "d-none") {
-                                                                id = "mapInputSection"
-                                                                div(classes = "row") {
-                                                                    div(classes = "col-md-6 mb-3") {
-                                                                        label(classes = "form-label") { +"離陸場所 (地図上でピンをドラッグ)" }
-                                                                        div(classes = "border rounded") {
-                                                                            id = "takeoffMap"
-                                                                            style = "height: 300px; width: 100%;"
-                                                                        }
-                                                                        div(classes = "mt-2") {
-                                                                            small(classes = "text-muted") { +"選択座標: " }
-                                                                            span(classes = "") { 
-                                                                                id = "takeoffCoordinatesDisplay"
-                                                                                +"未選択" 
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    div(classes = "col-md-6 mb-3") {
-                                                                        label(classes = "form-label") { +"着陸場所 (地図上でピンをドラッグ)" }
-                                                                        div(classes = "border rounded") {
-                                                                            id = "landingMap"
-                                                                            style = "height: 300px; width: 100%;"
-                                                                        }
-                                                                        div(classes = "mt-2") {
-                                                                            small(classes = "text-muted") { +"選択座標: " }
-                                                                            span(classes = "") { 
-                                                                                id = "landingCoordinatesDisplay"
-                                                                                +"未選択" 
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                            
-                                                            // Hidden fields for coordinate data
-                                                            hiddenInput(name = "takeoffInputType") { id = "takeoffInputType"; value = "text" }
-                                                            hiddenInput(name = "landingInputType") { id = "landingInputType"; value = "text" }
-                                                            hiddenInput(name = "takeoffLatitude") { id = "takeoffLatitude" }
-                                                            hiddenInput(name = "takeoffLongitude") { id = "takeoffLongitude" }
-                                                            hiddenInput(name = "landingLatitude") { id = "landingLatitude" }
-                                                            hiddenInput(name = "landingLongitude") { id = "landingLongitude" }
-                                                        }
+                                                div(classes = "col-md-6 mb-3") {
+                                                    label(classes = "form-label") { +"離陸場所" }
+                                                    textInput(classes = "form-control") { 
+                                                        name = "takeoffLocation"
+                                                        placeholder = "離陸場所を入力してください"
+                                                        required = true
+                                                    }
+                                                }
+                                                div(classes = "col-md-6 mb-3") {
+                                                    label(classes = "form-label") { +"着陸場所" }
+                                                    textInput(classes = "form-control") { 
+                                                        name = "landingLocation"
+                                                        placeholder = "着陸場所を入力してください"
+                                                        required = true
                                                     }
                                                 }
                                             }
@@ -472,106 +357,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                         }
                     }
                     addFooter()
-                    
-                    // JavaScript for location input functionality
-                    script {
-                        unsafe {
-                            +"""
-                                // Global variables for maps
-                                let takeoffMap, landingMap;
-                                let takeoffMarker, landingMarker;
-                                
-                                // Toggle between text and coordinate input methods
-                                function toggleLocationInputMethod() {
-                                    const textMethod = document.getElementById("inputMethodText").checked;
-                                    const coordMethod = document.getElementById("inputMethodCoordinates").checked;
-                                    
-                                    const textSection = document.getElementById("textInputSection");
-                                    const mapSection = document.getElementById("mapInputSection");
-                                    
-                                    if (textMethod) {
-                                        textSection.classList.remove("d-none");
-                                        mapSection.classList.add("d-none");
-                                        document.getElementById("takeoffInputType").value = "text";
-                                        document.getElementById("landingInputType").value = "text";
-                                        // Clear coordinate fields
-                                        document.getElementById("takeoffLatitude").value = "";
-                                        document.getElementById("takeoffLongitude").value = "";
-                                        document.getElementById("landingLatitude").value = "";
-                                        document.getElementById("landingLongitude").value = "";
-                                    } else if (coordMethod) {
-                                        textSection.classList.add("d-none");
-                                        mapSection.classList.remove("d-none");
-                                        document.getElementById("takeoffInputType").value = "coordinates";
-                                        document.getElementById("landingInputType").value = "coordinates";
-                                        // Initialize maps
-                                        setTimeout(initializeMaps, 100);
-                                    }
-                                }
-                                
-                                // Initialize Leaflet maps
-                                function initializeMaps() {
-                                    // Default location (Tokyo Station)
-                                    const defaultLat = 35.6812;
-                                    const defaultLng = 139.7671;
-                                    
-                                    // Initialize takeoff map
-                                    if (takeoffMap) {
-                                        takeoffMap.remove();
-                                    }
-                                    takeoffMap = L.map("takeoffMap").setView([defaultLat, defaultLng], 10);
-                                    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                                        attribution: "© OpenStreetMap contributors"
-                                    }).addTo(takeoffMap);
-                                    
-                                    // Initialize landing map
-                                    if (landingMap) {
-                                        landingMap.remove();
-                                    }
-                                    landingMap = L.map("landingMap").setView([defaultLat, defaultLng], 10);
-                                    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                                        attribution: "© OpenStreetMap contributors"
-                                    }).addTo(landingMap);
-                                    
-                                    // Add draggable markers
-                                    takeoffMarker = L.marker([defaultLat, defaultLng], {draggable: true})
-                                        .addTo(takeoffMap)
-                                        .bindPopup("離陸場所<br>ドラッグして移動できます");
-                                    
-                                    landingMarker = L.marker([defaultLat, defaultLng], {draggable: true})
-                                        .addTo(landingMap)
-                                        .bindPopup("着陸場所<br>ドラッグして移動できます");
-                                    
-                                    // Update coordinates on marker drag
-                                    takeoffMarker.on("dragend", function(e) {
-                                        const position = e.target.getLatLng();
-                                        document.getElementById("takeoffLatitude").value = position.lat.toFixed(6);
-                                        document.getElementById("takeoffLongitude").value = position.lng.toFixed(6);
-                                        document.getElementById("takeoffCoordinatesDisplay").textContent = 
-                                            position.lat.toFixed(6) + ", " + position.lng.toFixed(6);
-                                    });
-                                    
-                                    landingMarker.on("dragend", function(e) {
-                                        const position = e.target.getLatLng();
-                                        document.getElementById("landingLatitude").value = position.lat.toFixed(6);
-                                        document.getElementById("landingLongitude").value = position.lng.toFixed(6);
-                                        document.getElementById("landingCoordinatesDisplay").textContent = 
-                                            position.lat.toFixed(6) + ", " + position.lng.toFixed(6);
-                                    });
-                                    
-                                    // Set initial coordinates
-                                    document.getElementById("takeoffLatitude").value = defaultLat.toFixed(6);
-                                    document.getElementById("takeoffLongitude").value = defaultLng.toFixed(6);
-                                    document.getElementById("landingLatitude").value = defaultLat.toFixed(6);
-                                    document.getElementById("landingLongitude").value = defaultLng.toFixed(6);
-                                    document.getElementById("takeoffCoordinatesDisplay").textContent = 
-                                        defaultLat.toFixed(6) + ", " + defaultLng.toFixed(6);
-                                    document.getElementById("landingCoordinatesDisplay").textContent = 
-                                        defaultLat.toFixed(6) + ", " + defaultLng.toFixed(6);
-                                }
-                            """.trimIndent()
-                        }
-                    }
                 }
             }
         }
@@ -610,7 +395,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                         h1(classes = "card-title mb-0") { +"📅 飛行記録 - カレンダー表示" }
                                         div {
                                             a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
-                                            a(href = "/flightlogs/ui/heatmap", classes = "btn btn-outline-warning btn-sm me-2") { +"🗺️ ヒートマップ" }
                                             a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
                                             a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
                                         }
@@ -782,7 +566,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                         h1(classes = "card-title mb-0") { +"📊 飛行記録 - タイムライン表示" }
                                         div {
                                             a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
-                                            a(href = "/flightlogs/ui/heatmap", classes = "btn btn-outline-warning btn-sm me-2") { +"🗺️ ヒートマップ" }
                                             a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
                                             a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
                                         }
@@ -808,24 +591,10 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                                             p(classes = "mb-2") {
                                                                                 strong { +"🛫 離陸場所: " }
                                                                                 +flightLog.takeoffLocation
-                                                                                if (flightLog.takeoffInputType == "coordinates" && 
-                                                                                    flightLog.takeoffLatitude != null && flightLog.takeoffLongitude != null) {
-                                                                                    br()
-                                                                                    small(classes = "text-muted") { 
-                                                                                        +"📍 (${flightLog.takeoffLatitude?.toPlainString()?.take(8)}, ${flightLog.takeoffLongitude?.toPlainString()?.take(8)})"
-                                                                                    }
-                                                                                }
                                                                             }
                                                                             p(classes = "mb-2") {
                                                                                 strong { +"🛬 着陸場所: " }
                                                                                 +flightLog.landingLocation
-                                                                                if (flightLog.landingInputType == "coordinates" && 
-                                                                                    flightLog.landingLatitude != null && flightLog.landingLongitude != null) {
-                                                                                    br()
-                                                                                    small(classes = "text-muted") { 
-                                                                                        +"📍 (${flightLog.landingLatitude?.toPlainString()?.take(8)}, ${flightLog.landingLongitude?.toPlainString()?.take(8)})"
-                                                                                    }
-                                                                                }
                                                                             }
                                                                         } else if (!flightLog.takeoffLandingLocation.isNullOrEmpty()) {
                                                                             p(classes = "mb-2") {
@@ -905,164 +674,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                         }
                     }
                     addFooter()
-                }
-            }
-        }
-        
-        // Heat map view
-        get("/heatmap") {
-            val session = call.sessions.get<UserSession>()
-            if (session == null) {
-                call.respondRedirect("/login")
-                return@get
-            }
-            val flightLogs = flightLogService.getAllByUserId(session.userId)
-                .filter { it.takeoffInputType == "coordinates" && it.landingInputType == "coordinates" &&
-                         it.takeoffLatitude != null && it.takeoffLongitude != null &&
-                         it.landingLatitude != null && it.landingLongitude != null }
-            call.respondHtml {
-                head { 
-                    bootstrapHead("飛行記録 - ヒートマップ表示")
-                    // Add Leaflet CSS and JS for heatmap functionality
-                    link(rel = "stylesheet", href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css")
-                    script(src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js") {}
-                    script(src = "https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js") {}
-                }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
-                        div(classes = "container") {
-                            a(href = "/", classes = "navbar-brand") { +"🛩️ OpenDroneDiary" }
-                            div(classes = "navbar-nav ms-auto") {
-                                span(classes = "navbar-text me-3") { +"ログイン中: ${session.username}" }
-                                a(href = "/logout", classes = "btn btn-outline-light btn-sm") { +"ログアウト" }
-                            }
-                        }
-                    }
-                    div(classes = "container mt-4") {
-                        div(classes = "row") {
-                            div(classes = "col-12") {
-                                div(classes = "card") {
-                                    div(classes = "card-header d-flex justify-content-between align-items-center") {
-                                        h1(classes = "card-title mb-0") { +"🗺️ 飛行記録 - ヒートマップ表示" }
-                                        div {
-                                            a(href = "/flightlogs/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"📋 リスト表示" }
-                                            a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
-                                            a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
-                                            a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
-                                        }
-                                    }
-                                    div(classes = "card-body") {
-                                        if (flightLogs.isEmpty()) {
-                                            div(classes = "alert alert-warning") { 
-                                                +"座標データが登録された飛行記録がありません。地図上で座標入力を行った飛行記録を作成すると、ここにヒートマップが表示されます。" 
-                                            }
-                                        } else {
-                                            div(classes = "alert alert-info mb-3") {
-                                                strong { +"表示データ: " }
-                                                +"座標入力された飛行記録 ${flightLogs.size} 件のヒートマップ"
-                                            }
-                                        }
-                                        div(classes = "") {
-                                            id = "heatmapContainer"
-                                            style = "height: 600px; width: 100%;"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    addFooter()
-                    
-                    // Heatmap initialization script
-                    script {
-                        unsafe {
-                            +"""
-                                document.addEventListener('DOMContentLoaded', function() {
-                                    const mapContainer = document.getElementById('heatmapContainer');
-                                    
-                                    // Default location (Tokyo Station)
-                                    const defaultLat = 35.6812;
-                                    const defaultLng = 139.7671;
-                                    
-                                    // Initialize map
-                                    const map = L.map('heatmapContainer').setView([defaultLat, defaultLng], 10);
-                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                        attribution: '© OpenStreetMap contributors'
-                                    }).addTo(map);
-                                    
-                                    // Prepare heat map data
-                                    const heatData = [];
-                                    const markers = [];
-                            """.trimIndent()
-                        }
-                        
-                        // Generate heat map data from flight logs with coordinates
-                        flightLogs.forEach { flightLog ->
-                            unsafe {
-                                +"""
-                                    // Add takeoff location
-                                    heatData.push([${flightLog.takeoffLatitude}, ${flightLog.takeoffLongitude}, 0.8]);
-                                    markers.push({
-                                        lat: ${flightLog.takeoffLatitude},
-                                        lng: ${flightLog.takeoffLongitude},
-                                        type: 'takeoff',
-                                        date: '${flightLog.flightDate}',
-                                        pilot: '${flightLog.pilotName}'
-                                    });
-                                    
-                                    // Add landing location
-                                    heatData.push([${flightLog.landingLatitude}, ${flightLog.landingLongitude}, 0.8]);
-                                    markers.push({
-                                        lat: ${flightLog.landingLatitude},
-                                        lng: ${flightLog.landingLongitude},
-                                        type: 'landing',
-                                        date: '${flightLog.flightDate}',
-                                        pilot: '${flightLog.pilotName}'
-                                    });
-                                """.trimIndent()
-                            }
-                        }
-                        
-                        unsafe {
-                            +"""
-                                    // Add heat layer if we have data
-                                    if (heatData.length > 0) {
-                                        const heat = L.heatLayer(heatData, {
-                                            radius: 25,
-                                            blur: 15,
-                                            maxZoom: 17,
-                                            gradient: {0.4: 'blue', 0.6: 'cyan', 0.8: 'lime', 1.0: 'red'}
-                                        }).addTo(map);
-                                        
-                                        // Add individual markers for detail
-                                        markers.forEach(function(marker) {
-                                            const icon = marker.type === 'takeoff' ? '🛫' : '🛬';
-                                            const color = marker.type === 'takeoff' ? 'green' : 'red';
-                                            
-                                            L.marker([marker.lat, marker.lng]).addTo(map)
-                                                .bindPopup(icon + ' ' + marker.type.charAt(0).toUpperCase() + marker.type.slice(1) + 
-                                                          '<br>日付: ' + marker.date + 
-                                                          '<br>操縦者: ' + marker.pilot);
-                                        });
-                                        
-                                        // Auto-fit map to show all markers
-                                        if (markers.length > 0) {
-                                            const group = new L.featureGroup(map._layers);
-                                            if (group.getBounds().isValid()) {
-                                                map.fitBounds(group.getBounds(), {padding: [20, 20]});
-                                            }
-                                        }
-                                    } else {
-                                        // No coordinate data available, show default view
-                                        L.marker([defaultLat, defaultLng]).addTo(map)
-                                            .bindPopup('座標データが登録された飛行記録がありません<br>地図上で座標入力を行った飛行記録を作成してください')
-                                            .openPopup();
-                                    }
-                                });
-                            """.trimIndent()
-                        }
-                    }
                 }
             }
         }
@@ -1240,14 +851,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                         val takeoffLandingTime = params["takeoffLandingTime"]
                         val flightDuration = params["flightDuration"]
                         
-                        // Handle coordinate fields
-                        val takeoffInputType = params["takeoffInputType"] ?: "text"
-                        val landingInputType = params["landingInputType"] ?: "text"
-                        val takeoffLatitude = params["takeoffLatitude"]?.toBigDecimalOrNull()
-                        val takeoffLongitude = params["takeoffLongitude"]?.toBigDecimalOrNull()
-                        val landingLatitude = params["landingLatitude"]?.toBigDecimalOrNull()
-                        val landingLongitude = params["landingLongitude"]?.toBigDecimalOrNull()
-                        
                         val updated = flightLogService.update(id, FlightLog(
                             id = id, 
                             flightDate = flightDate, 
@@ -1262,13 +865,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                             takeoffTime = takeoffTime,
                             landingTime = landingTime,
                             flightSummary = flightSummary,
-                            totalFlightTime = totalFlightTime,
-                    takeoffInputType = takeoffInputType,
-                    landingInputType = landingInputType,
-                    takeoffLatitude = takeoffLatitude,
-                    takeoffLongitude = takeoffLongitude,
-                    landingLatitude = landingLatitude,
-                    landingLongitude = landingLongitude
+                            totalFlightTime = totalFlightTime
                         ), session.userId)
                         if (updated) {
                             call.respondRedirect("/flightlogs/ui")
@@ -1316,14 +913,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 val takeoffLandingTime = params["takeoffLandingTime"]
                 val flightDuration = params["flightDuration"]
                 
-                // Handle coordinate fields
-                val takeoffInputType = params["takeoffInputType"] ?: "text"
-                val landingInputType = params["landingInputType"] ?: "text"
-                val takeoffLatitude = params["takeoffLatitude"]?.toBigDecimalOrNull()
-                val takeoffLongitude = params["takeoffLongitude"]?.toBigDecimalOrNull()
-                val landingLatitude = params["landingLatitude"]?.toBigDecimalOrNull()
-                val landingLongitude = params["landingLongitude"]?.toBigDecimalOrNull()
-                
                 val created = flightLogService.add(FlightLog(
                     id = 0, 
                     flightDate = flightDate, 
@@ -1338,13 +927,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffTime = takeoffTime,
                     landingTime = landingTime,
                     flightSummary = flightSummary,
-                    totalFlightTime = totalFlightTime,
-                    takeoffInputType = takeoffInputType,
-                    landingInputType = landingInputType,
-                    takeoffLatitude = takeoffLatitude,
-                    takeoffLongitude = takeoffLongitude,
-                    landingLatitude = landingLatitude,
-                    landingLongitude = landingLongitude
+                    totalFlightTime = totalFlightTime
                 ))
                 call.respondRedirect("/flightlogs/ui")
             } else {
