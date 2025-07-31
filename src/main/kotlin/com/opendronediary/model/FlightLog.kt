@@ -1,5 +1,6 @@
 package com.opendronediary.model
 
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 data class FlightLog(
@@ -18,6 +19,13 @@ data class FlightLog(
     val landingTime: String? = null, // 着陸時刻
     val flightSummary: String? = null, // 飛行概要
     val totalFlightTime: String? = null, // 総飛行時間
+    // Coordinate and input type fields
+    val takeoffInputType: String = "text", // 離陸場所入力種別 (text or coordinates)
+    val landingInputType: String = "text", // 着陸場所入力種別 (text or coordinates)
+    val takeoffLatitude: BigDecimal? = null, // 離陸場所緯度
+    val takeoffLongitude: BigDecimal? = null, // 離陸場所経度
+    val landingLatitude: BigDecimal? = null, // 着陸場所緯度
+    val landingLongitude: BigDecimal? = null, // 着陸場所経度
     val createdAt: LocalDateTime? = null,
     val updatedAt: LocalDateTime? = null
 )

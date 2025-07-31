@@ -67,14 +67,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 val takeoffLandingTime = params["takeoffLandingTime"]
                 val flightDuration = params["flightDuration"]
                 
-                // Handle coordinate fields
-                val takeoffInputType = params["takeoffInputType"] ?: "text"
-                val landingInputType = params["landingInputType"] ?: "text"
-                val takeoffLatitude = params["takeoffLatitude"]?.toBigDecimalOrNull()
-                val takeoffLongitude = params["takeoffLongitude"]?.toBigDecimalOrNull()
-                val landingLatitude = params["landingLatitude"]?.toBigDecimalOrNull()
-                val landingLongitude = params["landingLongitude"]?.toBigDecimalOrNull()
-                
                 val created = flightLogService.add(FlightLog(
                     id = 0, 
                     flightDate = flightDate, 
@@ -89,13 +81,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffTime = takeoffTime,
                     landingTime = landingTime,
                     flightSummary = flightSummary,
-                    totalFlightTime = totalFlightTime,
-                    takeoffInputType = takeoffInputType,
-                    landingInputType = landingInputType,
-                    takeoffLatitude = takeoffLatitude,
-                    takeoffLongitude = takeoffLongitude,
-                    landingLatitude = landingLatitude,
-                    landingLongitude = landingLongitude
+                    totalFlightTime = totalFlightTime
                 ))
                 
                 // Send Slack notification for flight log creation
@@ -865,14 +851,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                         val takeoffLandingTime = params["takeoffLandingTime"]
                         val flightDuration = params["flightDuration"]
                         
-                        // Handle coordinate fields
-                        val takeoffInputType = params["takeoffInputType"] ?: "text"
-                        val landingInputType = params["landingInputType"] ?: "text"
-                        val takeoffLatitude = params["takeoffLatitude"]?.toBigDecimalOrNull()
-                        val takeoffLongitude = params["takeoffLongitude"]?.toBigDecimalOrNull()
-                        val landingLatitude = params["landingLatitude"]?.toBigDecimalOrNull()
-                        val landingLongitude = params["landingLongitude"]?.toBigDecimalOrNull()
-                        
                         val updated = flightLogService.update(id, FlightLog(
                             id = id, 
                             flightDate = flightDate, 
@@ -887,13 +865,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                             takeoffTime = takeoffTime,
                             landingTime = landingTime,
                             flightSummary = flightSummary,
-                            totalFlightTime = totalFlightTime,
-                    takeoffInputType = takeoffInputType,
-                    landingInputType = landingInputType,
-                    takeoffLatitude = takeoffLatitude,
-                    takeoffLongitude = takeoffLongitude,
-                    landingLatitude = landingLatitude,
-                    landingLongitude = landingLongitude
+                            totalFlightTime = totalFlightTime
                         ), session.userId)
                         if (updated) {
                             call.respondRedirect("/flightlogs/ui")
@@ -941,14 +913,6 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 val takeoffLandingTime = params["takeoffLandingTime"]
                 val flightDuration = params["flightDuration"]
                 
-                // Handle coordinate fields
-                val takeoffInputType = params["takeoffInputType"] ?: "text"
-                val landingInputType = params["landingInputType"] ?: "text"
-                val takeoffLatitude = params["takeoffLatitude"]?.toBigDecimalOrNull()
-                val takeoffLongitude = params["takeoffLongitude"]?.toBigDecimalOrNull()
-                val landingLatitude = params["landingLatitude"]?.toBigDecimalOrNull()
-                val landingLongitude = params["landingLongitude"]?.toBigDecimalOrNull()
-                
                 val created = flightLogService.add(FlightLog(
                     id = 0, 
                     flightDate = flightDate, 
@@ -963,13 +927,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffTime = takeoffTime,
                     landingTime = landingTime,
                     flightSummary = flightSummary,
-                    totalFlightTime = totalFlightTime,
-                    takeoffInputType = takeoffInputType,
-                    landingInputType = landingInputType,
-                    takeoffLatitude = takeoffLatitude,
-                    takeoffLongitude = takeoffLongitude,
-                    landingLatitude = landingLatitude,
-                    landingLongitude = landingLongitude
+                    totalFlightTime = totalFlightTime
                 ))
                 call.respondRedirect("/flightlogs/ui")
             } else {

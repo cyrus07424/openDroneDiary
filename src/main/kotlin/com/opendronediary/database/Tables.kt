@@ -32,6 +32,15 @@ object FlightLogs : Table() {
     val landingTime = varchar("landing_time", 20).nullable()
     val flightSummary = varchar("flight_summary", 1000).nullable()
     val totalFlightTime = varchar("total_flight_time", 20).nullable()
+    
+    // Coordinate and input type fields
+    val takeoffInputType = varchar("takeoff_input_type", 20).default("text")
+    val landingInputType = varchar("landing_input_type", 20).default("text")
+    val takeoffLatitude = decimal("takeoff_latitude", 10, 8).nullable()
+    val takeoffLongitude = decimal("takeoff_longitude", 11, 8).nullable()
+    val landingLatitude = decimal("landing_latitude", 10, 8).nullable()
+    val landingLongitude = decimal("landing_longitude", 11, 8).nullable()
+    
     val createdAt = datetime("created_at").default(LocalDateTime.now())
     val updatedAt = datetime("updated_at").default(LocalDateTime.now())
     
