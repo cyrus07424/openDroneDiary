@@ -7,7 +7,7 @@ data class User(
     val id: Int,
     val username: String,
     val passwordHash: String,
-    val email: String? = null,
+    val email: String,
     val createdAt: LocalDateTime? = null,
     val updatedAt: LocalDateTime? = null
 )

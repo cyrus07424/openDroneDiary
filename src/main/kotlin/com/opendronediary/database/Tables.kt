@@ -8,7 +8,7 @@ object Users : Table() {
     val id = integer("id").autoIncrement()
     val username = varchar("username", 50).uniqueIndex()
     val passwordHash = varchar("password_hash", 255)
-    val email = varchar("email", 255).nullable()
+    val email = varchar("email", 255).uniqueIndex()
     val createdAt = datetime("created_at").default(LocalDateTime.now())
     val updatedAt = datetime("updated_at").default(LocalDateTime.now())
     

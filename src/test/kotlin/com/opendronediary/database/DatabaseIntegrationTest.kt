@@ -18,7 +18,7 @@ class DatabaseIntegrationTest {
         val userRepository = UserRepository()
         
         // Add a user
-        val user = User(0, "testuser", "hashedpassword")
+        val user = User(0, "testuser", "hashedpassword", "testuser@example.com")
         val addedUser = userRepository.add(user)
         
         assertNotNull(addedUser)

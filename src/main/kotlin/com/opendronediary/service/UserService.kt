@@ -9,13 +9,13 @@ import java.util.*
 
 class UserService(private val repository: UserRepository) {
     
-    fun register(username: String, password: String, email: String? = null): User? {
+    fun register(username: String, password: String, email: String): User? {
         if (repository.findByUsername(username) != null) {
             return null // User already exists
         }
         
-        // Check if email is already used (if provided)
-        if (!email.isNullOrEmpty() && repository.findByEmail(email) != null) {
+        // Check if email is already used
+        if (repository.findByEmail(email) != null) {
             return null // Email already used
         }
         
@@ -25,6 +25,11 @@ class UserService(private val repository: UserRepository) {
     
     fun login(username: String, password: String): User? {
         val user = repository.findByUsername(username) ?: return null
+        return if (verifyPassword(password, user.passwordHash)) user else null
+    }
+    
+    fun loginByEmail(email: String, password: String): User? {
+        val user = repository.findByEmail(email) ?: return null
         return if (verifyPassword(password, user.passwordHash)) user else null
     }
     
