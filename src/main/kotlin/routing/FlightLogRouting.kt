@@ -252,6 +252,18 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                                                 +"📍 座標: (${flightLog.takeoffLatitude?.toPlainString()?.take(8)}, ${flightLog.takeoffLongitude?.toPlainString()?.take(8)}) → (${flightLog.landingLatitude?.toPlainString()?.take(8)}, ${flightLog.landingLongitude?.toPlainString()?.take(8)})"
                                                                             }
                                                                         }
+                                                                    } else if (flightLog.takeoffInputType == "coordinates" && 
+                                                                               flightLog.takeoffLatitude != null && flightLog.takeoffLongitude != null &&
+                                                                               flightLog.landingLatitude != null && flightLog.landingLongitude != null) {
+                                                                        // Show coordinates view button when coordinates are available but text locations are not set
+                                                                        button(classes = "btn btn-sm btn-outline-info") {
+                                                                            attributes["onclick"] = "showCoordinatesModal(${flightLog.takeoffLatitude}, ${flightLog.takeoffLongitude}, ${flightLog.landingLatitude}, ${flightLog.landingLongitude}, '${flightLog.flightDate}')"
+                                                                            +"🗺️ 地図で確認"
+                                                                        }
+                                                                        br()
+                                                                        small(classes = "text-muted") { 
+                                                                            +"📍 座標: (${flightLog.takeoffLatitude?.toPlainString()?.take(8)}, ${flightLog.takeoffLongitude?.toPlainString()?.take(8)}) → (${flightLog.landingLatitude?.toPlainString()?.take(8)}, ${flightLog.landingLongitude?.toPlainString()?.take(8)})"
+                                                                        }
                                                                     } else {
                                                                         +(flightLog.takeoffLandingLocation ?: "未設定")
                                                                     }
@@ -473,6 +485,72 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     }
                     addFooter()
                     
+                    // Modal dialog for viewing coordinates on map
+                    div(classes = "modal fade") {
+                        attributes["id"] = "coordinatesModal"
+                        attributes["tabindex"] = "-1"
+                        attributes["aria-labelledby"] = "coordinatesModalLabel"
+                        attributes["aria-hidden"] = "true"
+                        div(classes = "modal-dialog modal-lg") {
+                            div(classes = "modal-content") {
+                                div(classes = "modal-header") {
+                                    h5(classes = "modal-title") {
+                                        attributes["id"] = "coordinatesModalLabel"
+                                        +"🗺️ 離陸・着陸場所"
+                                    }
+                                    button(classes = "btn-close") {
+                                        attributes["type"] = "button"
+                                        attributes["data-bs-dismiss"] = "modal"
+                                        attributes["aria-label"] = "Close"
+                                    }
+                                }
+                                div(classes = "modal-body") {
+                                    div(classes = "mb-3") {
+                                        strong { +"飛行日: " }
+                                        span {
+                                            attributes["id"] = "modalFlightDate"
+                                        }
+                                    }
+                                    div(classes = "row") {
+                                        div(classes = "col-md-6 mb-3") {
+                                            h6 { +"🛫 離陸場所" }
+                                            div(classes = "text-muted mb-2") {
+                                                small {
+                                                    +"座標: "
+                                                    span {
+                                                        attributes["id"] = "modalTakeoffCoords"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        div(classes = "col-md-6 mb-3") {
+                                            h6 { +"🛬 着陸場所" }
+                                            div(classes = "text-muted mb-2") {
+                                                small {
+                                                    +"座標: "
+                                                    span {
+                                                        attributes["id"] = "modalLandingCoords"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    div(classes = "border rounded") {
+                                        attributes["id"] = "modalMap"
+                                        style = "height: 400px; width: 100%;"
+                                    }
+                                }
+                                div(classes = "modal-footer") {
+                                    button(classes = "btn btn-secondary") {
+                                        attributes["type"] = "button"
+                                        attributes["data-bs-dismiss"] = "modal"
+                                        +"閉じる"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
                     // JavaScript for location input functionality
                     script {
                         unsafe {
@@ -480,6 +558,60 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                 // Global variables for maps
                                 let takeoffMap, landingMap;
                                 let takeoffMarker, landingMarker;
+                                let modalMap;
+                                
+                                // Show coordinates modal with map
+                                function showCoordinatesModal(takeoffLat, takeoffLng, landingLat, landingLng, flightDate) {
+                                    // Update modal content
+                                    document.getElementById('modalFlightDate').textContent = flightDate;
+                                    document.getElementById('modalTakeoffCoords').textContent = takeoffLat.toFixed(6) + ', ' + takeoffLng.toFixed(6);
+                                    document.getElementById('modalLandingCoords').textContent = landingLat.toFixed(6) + ', ' + landingLng.toFixed(6);
+                                    
+                                    // Show modal
+                                    const modal = new bootstrap.Modal(document.getElementById('coordinatesModal'));
+                                    modal.show();
+                                    
+                                    // Initialize map after modal is shown
+                                    setTimeout(function() {
+                                        initializeModalMap(takeoffLat, takeoffLng, landingLat, landingLng);
+                                    }, 300);
+                                }
+                                
+                                // Initialize modal map with both markers
+                                function initializeModalMap(takeoffLat, takeoffLng, landingLat, landingLng) {
+                                    // Remove existing map if any
+                                    if (modalMap) {
+                                        modalMap.remove();
+                                    }
+                                    
+                                    // Calculate center point between takeoff and landing
+                                    const centerLat = (parseFloat(takeoffLat) + parseFloat(landingLat)) / 2;
+                                    const centerLng = (parseFloat(takeoffLng) + parseFloat(landingLng)) / 2;
+                                    
+                                    // Initialize map
+                                    modalMap = L.map('modalMap').setView([centerLat, centerLng], 10);
+                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                        attribution: '© OpenStreetMap contributors'
+                                    }).addTo(modalMap);
+                                    
+                                    // Add takeoff marker
+                                    const takeoffMarker = L.marker([takeoffLat, takeoffLng]).addTo(modalMap);
+                                    takeoffMarker.bindPopup('🛫 離陸場所<br>座標: ' + takeoffLat.toFixed(6) + ', ' + takeoffLng.toFixed(6));
+                                    
+                                    // Add landing marker
+                                    const landingMarker = L.marker([landingLat, landingLng]).addTo(modalMap);
+                                    landingMarker.bindPopup('🛬 着陸場所<br>座標: ' + landingLat.toFixed(6) + ', ' + landingLng.toFixed(6));
+                                    
+                                    // Draw line between takeoff and landing
+                                    const flightPath = L.polyline([
+                                        [takeoffLat, takeoffLng],
+                                        [landingLat, landingLng]
+                                    ], {color: 'blue', weight: 3, opacity: 0.7}).addTo(modalMap);
+                                    
+                                    // Auto-fit map to show both markers
+                                    const group = new L.featureGroup([takeoffMarker, landingMarker, flightPath]);
+                                    modalMap.fitBounds(group.getBounds(), {padding: [20, 20]});
+                                }
                                 
                                 // Toggle between text and coordinate input methods
                                 function toggleLocationInputMethod() {
