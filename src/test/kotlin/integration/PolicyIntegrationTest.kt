@@ -41,6 +41,7 @@ class PolicyIntegrationTest {
         assertFalse(htmlContent.contains("<footer"))
         assertFalse(htmlContent.contains("利用規約"))
         assertFalse(htmlContent.contains("プライバシーポリシー"))
+        assertFalse(htmlContent.contains("LPトップページ"))
     }
     
     @Test

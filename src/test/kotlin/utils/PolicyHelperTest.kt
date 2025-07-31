@@ -11,5 +11,6 @@ class PolicyHelperTest {
         // By default, no environment variables are set
         assertFalse(PolicyHelper.isTermsOfServiceEnabled())
         assertFalse(PolicyHelper.isPrivacyPolicyEnabled())
+        assertFalse(PolicyHelper.isLpTopPageEnabled())
     }
 }
