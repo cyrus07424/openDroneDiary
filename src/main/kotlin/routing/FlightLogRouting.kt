@@ -1080,7 +1080,12 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 return@get
             }
             call.respondHtml {
-                head { bootstrapHead("飛行記録編集") }
+                head { 
+                    bootstrapHead("飛行記録編集")
+                    // Add Leaflet CSS and JS for map functionality
+                    link(rel = "stylesheet", href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css")
+                    script(src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js") {}
+                }
                 body {
                     addGTMBodyScript()
                     nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
@@ -1121,23 +1126,138 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                     }
                                                 }
                                             }
+                                            // Enhanced location input section
                                             div(classes = "row") {
-                                                div(classes = "col-md-6 mb-3") {
-                                                    label(classes = "form-label") { +"離陸場所" }
-                                                    textInput(classes = "form-control") { 
-                                                        name = "takeoffLocation"
-                                                        value = flightLog.takeoffLocation ?: flightLog.takeoffLandingLocation ?: ""
-                                                        placeholder = "離陸場所を入力してください"
-                                                        required = true
-                                                    }
-                                                }
-                                                div(classes = "col-md-6 mb-3") {
-                                                    label(classes = "form-label") { +"着陸場所" }
-                                                    textInput(classes = "form-control") { 
-                                                        name = "landingLocation"
-                                                        value = flightLog.landingLocation ?: flightLog.takeoffLandingLocation ?: ""
-                                                        placeholder = "着陸場所を入力してください"
-                                                        required = true
+                                                div(classes = "col-12 mb-4") {
+                                                    div(classes = "card border-info") {
+                                                        div(classes = "card-header bg-info text-white") {
+                                                            h5(classes = "mb-0") { +"📍 離陸・着陸場所の入力方法" }
+                                                        }
+                                                        div(classes = "card-body") {
+                                                            // Radio button selection
+                                                            div(classes = "row mb-3") {
+                                                                div(classes = "col-md-6") {
+                                                                    div(classes = "form-check") {
+                                                                        radioInput(classes = "form-check-input", name = "locationInputMethod") {
+                                                                            value = "text"
+                                                                            attributes["id"] = "inputMethodTextEdit"
+                                                                            // Check if current flight log uses text input
+                                                                            if (flightLog.takeoffInputType != "coordinates") checked = true
+                                                                            attributes["onchange"] = "toggleLocationInputMethodEdit()"
+                                                                        }
+                                                                        label(classes = "form-check-label") {
+                                                                            htmlFor = "inputMethodTextEdit"
+                                                                            +"テキスト入力"
+                                                                        }
+                                                                    }
+                                                                }
+                                                                div(classes = "col-md-6") {
+                                                                    div(classes = "form-check") {
+                                                                        radioInput(classes = "form-check-input", name = "locationInputMethod") {
+                                                                            value = "coordinates"
+                                                                            attributes["id"] = "inputMethodCoordinatesEdit"
+                                                                            // Check if current flight log uses coordinate input
+                                                                            if (flightLog.takeoffInputType == "coordinates") checked = true
+                                                                            attributes["onchange"] = "toggleLocationInputMethodEdit()"
+                                                                        }
+                                                                        label(classes = "form-check-label") {
+                                                                            htmlFor = "inputMethodCoordinatesEdit"
+                                                                            +"地図上で座標入力"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            // Text input section
+                                                            div(classes = if (flightLog.takeoffInputType == "coordinates") "d-none" else "") {
+                                                                attributes["id"] = "textInputSectionEdit"
+                                                                div(classes = "row") {
+                                                                    div(classes = "col-md-6 mb-3") {
+                                                                        label(classes = "form-label") { +"離陸場所" }
+                                                                        textInput(classes = "form-control", name = "takeoffLocation") { 
+                                                                            attributes["id"] = "takeoffLocationTextEdit"
+                                                                            placeholder = "離陸場所を入力してください"
+                                                                            value = flightLog.takeoffLocation ?: flightLog.takeoffLandingLocation ?: ""
+                                                                        }
+                                                                    }
+                                                                    div(classes = "col-md-6 mb-3") {
+                                                                        label(classes = "form-label") { +"着陸場所" }
+                                                                        textInput(classes = "form-control", name = "landingLocation") { 
+                                                                            attributes["id"] = "landingLocationTextEdit"
+                                                                            placeholder = "着陸場所を入力してください"
+                                                                            value = flightLog.landingLocation ?: flightLog.takeoffLandingLocation ?: ""
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            // Map input section
+                                                            div(classes = if (flightLog.takeoffInputType != "coordinates") "d-none" else "") {
+                                                                attributes["id"] = "mapInputSectionEdit"
+                                                                div(classes = "row") {
+                                                                    div(classes = "col-md-6 mb-3") {
+                                                                        label(classes = "form-label") { +"離陸場所 (地図上でピンをドラッグ)" }
+                                                                        div(classes = "border rounded") {
+                                                                            attributes["id"] = "takeoffMapEdit"
+                                                                            style = "height: 300px; width: 100%;"
+                                                                        }
+                                                                        div(classes = "mt-2") {
+                                                                            small(classes = "text-muted") { +"選択座標: " }
+                                                                            span(classes = "") { 
+                                                                                attributes["id"] = "takeoffCoordinatesDisplayEdit"
+                                                                                val coords = if (flightLog.takeoffLatitude != null && flightLog.takeoffLongitude != null) {
+                                                                                    "${flightLog.takeoffLatitude?.toPlainString()?.take(8)}, ${flightLog.takeoffLongitude?.toPlainString()?.take(8)}"
+                                                                                } else "未選択"
+                                                                                +coords
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    div(classes = "col-md-6 mb-3") {
+                                                                        label(classes = "form-label") { +"着陸場所 (地図上でピンをドラッグ)" }
+                                                                        div(classes = "border rounded") {
+                                                                            attributes["id"] = "landingMapEdit"
+                                                                            style = "height: 300px; width: 100%;"
+                                                                        }
+                                                                        div(classes = "mt-2") {
+                                                                            small(classes = "text-muted") { +"選択座標: " }
+                                                                            span(classes = "") { 
+                                                                                attributes["id"] = "landingCoordinatesDisplayEdit"
+                                                                                val coords = if (flightLog.landingLatitude != null && flightLog.landingLongitude != null) {
+                                                                                    "${flightLog.landingLatitude?.toPlainString()?.take(8)}, ${flightLog.landingLongitude?.toPlainString()?.take(8)}"
+                                                                                } else "未選択"
+                                                                                +coords
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            // Hidden fields for coordinate data
+                                                            hiddenInput(name = "takeoffInputType") { 
+                                                                attributes["id"] = "takeoffInputTypeEdit"
+                                                                value = flightLog.takeoffInputType 
+                                                            }
+                                                            hiddenInput(name = "landingInputType") { 
+                                                                attributes["id"] = "landingInputTypeEdit"
+                                                                value = flightLog.landingInputType 
+                                                            }
+                                                            hiddenInput(name = "takeoffLatitude") { 
+                                                                attributes["id"] = "takeoffLatitudeEdit"
+                                                                value = flightLog.takeoffLatitude?.toPlainString() ?: ""
+                                                            }
+                                                            hiddenInput(name = "takeoffLongitude") { 
+                                                                attributes["id"] = "takeoffLongitudeEdit"
+                                                                value = flightLog.takeoffLongitude?.toPlainString() ?: ""
+                                                            }
+                                                            hiddenInput(name = "landingLatitude") { 
+                                                                attributes["id"] = "landingLatitudeEdit"
+                                                                value = flightLog.landingLatitude?.toPlainString() ?: ""
+                                                            }
+                                                            hiddenInput(name = "landingLongitude") { 
+                                                                attributes["id"] = "landingLongitudeEdit"
+                                                                value = flightLog.landingLongitude?.toPlainString() ?: ""
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1205,6 +1325,122 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                     }
                                 }
                             }
+                        }
+                    }
+                    
+                    // JavaScript for location input functionality in edit form
+                    script {
+                        unsafe {
+                            +"""
+                                // Global variables for edit form maps
+                                let takeoffMapEdit, landingMapEdit;
+                                let takeoffMarkerEdit, landingMarkerEdit;
+                                
+                                // Toggle between text and coordinate input methods for edit form
+                                function toggleLocationInputMethodEdit() {
+                                    const textMethod = document.getElementById("inputMethodTextEdit").checked;
+                                    const coordMethod = document.getElementById("inputMethodCoordinatesEdit").checked;
+                                    
+                                    const textSection = document.getElementById("textInputSectionEdit");
+                                    const mapSection = document.getElementById("mapInputSectionEdit");
+                                    
+                                    if (textMethod) {
+                                        textSection.classList.remove("d-none");
+                                        mapSection.classList.add("d-none");
+                                        document.getElementById("takeoffInputTypeEdit").value = "text";
+                                        document.getElementById("landingInputTypeEdit").value = "text";
+                                        // Clear coordinate fields when switching to text
+                                        if (document.getElementById("takeoffLatitudeEdit").value === "" && document.getElementById("takeoffLongitudeEdit").value === "") {
+                                            // Only clear if not already set
+                                            document.getElementById("takeoffLatitudeEdit").value = "";
+                                            document.getElementById("takeoffLongitudeEdit").value = "";
+                                            document.getElementById("landingLatitudeEdit").value = "";
+                                            document.getElementById("landingLongitudeEdit").value = "";
+                                        }
+                                    } else if (coordMethod) {
+                                        textSection.classList.add("d-none");
+                                        mapSection.classList.remove("d-none");
+                                        document.getElementById("takeoffInputTypeEdit").value = "coordinates";
+                                        document.getElementById("landingInputTypeEdit").value = "coordinates";
+                                        // Initialize maps
+                                        setTimeout(initializeEditMaps, 100);
+                                    }
+                                }
+                                
+                                // Initialize Leaflet maps for edit form
+                                function initializeEditMaps() {
+                                    // Get existing coordinates or use default location (Tokyo Station)
+                                    const existingTakeoffLat = parseFloat(document.getElementById("takeoffLatitudeEdit").value) || 35.6812;
+                                    const existingTakeoffLng = parseFloat(document.getElementById("takeoffLongitudeEdit").value) || 139.7671;
+                                    const existingLandingLat = parseFloat(document.getElementById("landingLatitudeEdit").value) || 35.6812;
+                                    const existingLandingLng = parseFloat(document.getElementById("landingLongitudeEdit").value) || 139.7671;
+                                    
+                                    // Initialize takeoff map
+                                    if (takeoffMapEdit) {
+                                        takeoffMapEdit.remove();
+                                    }
+                                    takeoffMapEdit = L.map("takeoffMapEdit").setView([existingTakeoffLat, existingTakeoffLng], 10);
+                                    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                                        attribution: "© OpenStreetMap contributors"
+                                    }).addTo(takeoffMapEdit);
+                                    
+                                    // Initialize landing map
+                                    if (landingMapEdit) {
+                                        landingMapEdit.remove();
+                                    }
+                                    landingMapEdit = L.map("landingMapEdit").setView([existingLandingLat, existingLandingLng], 10);
+                                    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                                        attribution: "© OpenStreetMap contributors"
+                                    }).addTo(landingMapEdit);
+                                    
+                                    // Add draggable markers with existing positions
+                                    takeoffMarkerEdit = L.marker([existingTakeoffLat, existingTakeoffLng], {draggable: true})
+                                        .addTo(takeoffMapEdit)
+                                        .bindPopup("離陸場所<br>ドラッグして移動できます");
+                                    
+                                    landingMarkerEdit = L.marker([existingLandingLat, existingLandingLng], {draggable: true})
+                                        .addTo(landingMapEdit)
+                                        .bindPopup("着陸場所<br>ドラッグして移動できます");
+                                    
+                                    // Update coordinates on marker drag
+                                    takeoffMarkerEdit.on("dragend", function(e) {
+                                        const position = e.target.getLatLng();
+                                        document.getElementById("takeoffLatitudeEdit").value = position.lat.toFixed(6);
+                                        document.getElementById("takeoffLongitudeEdit").value = position.lng.toFixed(6);
+                                        document.getElementById("takeoffCoordinatesDisplayEdit").textContent = 
+                                            position.lat.toFixed(6) + ", " + position.lng.toFixed(6);
+                                    });
+                                    
+                                    landingMarkerEdit.on("dragend", function(e) {
+                                        const position = e.target.getLatLng();
+                                        document.getElementById("landingLatitudeEdit").value = position.lat.toFixed(6);
+                                        document.getElementById("landingLongitudeEdit").value = position.lng.toFixed(6);
+                                        document.getElementById("landingCoordinatesDisplayEdit").textContent = 
+                                            position.lat.toFixed(6) + ", " + position.lng.toFixed(6);
+                                    });
+                                    
+                                    // Set initial coordinates in hidden fields if not already set
+                                    if (!document.getElementById("takeoffLatitudeEdit").value) {
+                                        document.getElementById("takeoffLatitudeEdit").value = existingTakeoffLat.toFixed(6);
+                                        document.getElementById("takeoffLongitudeEdit").value = existingTakeoffLng.toFixed(6);
+                                        document.getElementById("takeoffCoordinatesDisplayEdit").textContent = 
+                                            existingTakeoffLat.toFixed(6) + ", " + existingTakeoffLng.toFixed(6);
+                                    }
+                                    if (!document.getElementById("landingLatitudeEdit").value) {
+                                        document.getElementById("landingLatitudeEdit").value = existingLandingLat.toFixed(6);
+                                        document.getElementById("landingLongitudeEdit").value = existingLandingLng.toFixed(6);
+                                        document.getElementById("landingCoordinatesDisplayEdit").textContent = 
+                                            existingLandingLat.toFixed(6) + ", " + existingLandingLng.toFixed(6);
+                                    }
+                                }
+                                
+                                // Initialize maps on page load if coordinate method is selected
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    if (document.getElementById("inputMethodCoordinatesEdit").checked) {
+                                        setTimeout(initializeEditMaps, 100);
+                                    }
+                                });
+                            """.trimIndent()
                         }
                     }
                 }
