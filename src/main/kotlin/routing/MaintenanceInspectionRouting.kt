@@ -13,6 +13,7 @@ import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMBodyScript
 import utils.RequestContextHelper
+import routing.bootstrapHead
 
 fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordService: MaintenanceInspectionRecordService, slackService: SlackService) {
     // Maintenance Inspection Record UI routes
