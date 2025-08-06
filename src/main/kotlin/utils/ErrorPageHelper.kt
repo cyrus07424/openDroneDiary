@@ -13,9 +13,33 @@ object ErrorPageHelper {
     suspend fun respondWithErrorPage(call: ApplicationCall, statusCode: HttpStatusCode, errorTitle: String, errorMessage: String) {
         call.respondHtml(statusCode) {
             head {
-                title { +errorTitle }
+                val fullTitle = if (errorTitle.contains("OpenDroneDiary")) errorTitle else "$errorTitle - OpenDroneDiary"
+                title { +fullTitle }
                 meta(charset = "utf-8")
                 meta(name = "viewport", content = "width=device-width, initial-scale=1")
+                
+                // SEO meta tags for error pages
+                meta(name = "description", content = "ドローンの飛行日誌を管理するためのオープンソースのツールです。")
+                meta(name = "robots", content = "noindex, nofollow")
+                
+                // Open Graph meta tags
+                meta {
+                    attributes["property"] = "og:title"
+                    attributes["content"] = fullTitle
+                }
+                meta {
+                    attributes["property"] = "og:description"
+                    attributes["content"] = "ドローンの飛行日誌を管理するためのオープンソースのツールです。"
+                }
+                meta {
+                    attributes["property"] = "og:type"
+                    attributes["content"] = "website"
+                }
+                meta {
+                    attributes["property"] = "og:site_name"
+                    attributes["content"] = "OpenDroneDiary"
+                }
+                
                 link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css")
                 script(src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js") { }
                 addGTMHeadScript()

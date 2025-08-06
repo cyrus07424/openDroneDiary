@@ -14,6 +14,7 @@ import kotlinx.html.*
 import utils.GTMHelper.addGTMBodyScript
 import utils.PolicyHelper.addFooter
 import utils.RequestContextHelper
+import routing.bootstrapHead
 import java.math.BigDecimal
 
 fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService) {

@@ -19,11 +19,44 @@ import utils.PolicyHelper.isTermsOfServiceEnabled
 import utils.PolicyHelper.getTermsOfServiceUrl
 import utils.RequestContextHelper
 
-// Helper function to create Bootstrap head with CDN links
-fun HEAD.bootstrapHead(pageTitle: String) {
-    title { +pageTitle }
+// Helper function to create Bootstrap head with CDN links and SEO meta tags
+fun HEAD.bootstrapHead(pageTitle: String, includeSEO: Boolean = false) {
+    val fullTitle = if (pageTitle.contains("OpenDroneDiary")) pageTitle else "$pageTitle - OpenDroneDiary"
+    title { +fullTitle }
     meta(charset = "utf-8")
     meta(name = "viewport", content = "width=device-width, initial-scale=1")
+    
+    // SEO meta tags for public pages
+    if (includeSEO) {
+        meta(name = "description", content = "ドローンの飛行日誌を管理するためのオープンソースのツールです。飛行記録、日常点検、整備記録を簡単に管理できます。")
+        meta(name = "keywords", content = "ドローン,飛行日誌,飛行記録,点検記録,整備記録,オープンソース,drone,flight log,inspection")
+        meta(name = "author", content = "OpenDroneDiary")
+        meta(name = "robots", content = "index, follow")
+        
+        // Open Graph meta tags for social sharing
+        meta {
+            attributes["property"] = "og:title"
+            attributes["content"] = fullTitle
+        }
+        meta {
+            attributes["property"] = "og:description"
+            attributes["content"] = "ドローンの飛行日誌を管理するためのオープンソースのツールです。飛行記録、日常点検、整備記録を簡単に管理できます。"
+        }
+        meta {
+            attributes["property"] = "og:type"
+            attributes["content"] = "website"
+        }
+        meta {
+            attributes["property"] = "og:site_name"
+            attributes["content"] = "OpenDroneDiary"
+        }
+        
+        // Twitter Card meta tags
+        meta(name = "twitter:card", content = "summary")
+        meta(name = "twitter:title", content = fullTitle)
+        meta(name = "twitter:description", content = "ドローンの飛行日誌を管理するためのオープンソースのツールです。")
+    }
+    
     link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css")
     script(src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js") { }
     addGTMHeadScript()
@@ -33,7 +66,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
     get("/") {
         val session = call.sessions.get<UserSession>()
         call.respondHtml {
-            head { bootstrapHead("トップ") }
+            head { bootstrapHead("トップ", includeSEO = true) }
             body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
@@ -72,7 +105,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
     // User authentication routes
     get("/login") {
         call.respondHtml {
-            head { bootstrapHead("ログイン") }
+            head { bootstrapHead("ログイン", includeSEO = true) }
             body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
@@ -175,7 +208,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
     
     get("/register") {
         call.respondHtml {
-            head { bootstrapHead("ユーザー登録") }
+            head { bootstrapHead("ユーザー登録", includeSEO = true) }
             body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
@@ -372,7 +405,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
     // Password reset routes
     get("/forgot-password") {
         call.respondHtml {
-            head { bootstrapHead("パスワードリセット") }
+            head { bootstrapHead("パスワードリセット", includeSEO = true) }
             body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
@@ -485,7 +518,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
         }
         
         call.respondHtml {
-            head { bootstrapHead("新しいパスワード") }
+            head { bootstrapHead("新しいパスワード", includeSEO = true) }
             body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-5") {
