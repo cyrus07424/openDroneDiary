@@ -39,7 +39,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.50.1")
     implementation("org.jetbrains.exposed:exposed-java-time:0.50.1")
     implementation("org.postgresql:postgresql:42.7.7")
-    implementation("com.zaxxer:HikariCP:7.0.0")
+    implementation("com.zaxxer:HikariCP:7.0.1")
     
     // H2 database for local development/testing
     implementation("com.h2database:h2:2.3.232")
