@@ -48,6 +48,7 @@ object DatabaseConfig {
         transaction {
             SchemaUtils.create(
                 Users,
+                Pilots,
                 FlightLogs,
                 DailyInspectionRecords,
                 MaintenanceInspectionRecords,

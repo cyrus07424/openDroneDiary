@@ -19,6 +19,7 @@ class FlightLogRepository {
                     takeoffLandingTime = it[FlightLogs.takeoffLandingTime],
                     flightDuration = it[FlightLogs.flightDuration],
                     pilotName = it[FlightLogs.pilotName],
+                    pilotId = it[FlightLogs.pilotId],
                     issuesAndResponses = it[FlightLogs.issuesAndResponses],
                     userId = it[FlightLogs.userId],
                     takeoffLocation = it[FlightLogs.takeoffLocation],
@@ -49,6 +50,7 @@ class FlightLogRepository {
                     takeoffLandingTime = it[FlightLogs.takeoffLandingTime],
                     flightDuration = it[FlightLogs.flightDuration],
                     pilotName = it[FlightLogs.pilotName],
+                    pilotId = it[FlightLogs.pilotId],
                     issuesAndResponses = it[FlightLogs.issuesAndResponses],
                     userId = it[FlightLogs.userId],
                     takeoffLocation = it[FlightLogs.takeoffLocation],
@@ -78,6 +80,7 @@ class FlightLogRepository {
             it[takeoffLandingTime] = flightLog.takeoffLandingTime
             it[flightDuration] = flightLog.flightDuration
             it[pilotName] = flightLog.pilotName
+            it[pilotId] = flightLog.pilotId
             it[issuesAndResponses] = flightLog.issuesAndResponses
             it[userId] = flightLog.userId
             it[takeoffLocation] = flightLog.takeoffLocation
@@ -107,6 +110,7 @@ class FlightLogRepository {
             it[takeoffLandingTime] = flightLog.takeoffLandingTime
             it[flightDuration] = flightLog.flightDuration
             it[pilotName] = flightLog.pilotName
+            it[pilotId] = flightLog.pilotId
             it[issuesAndResponses] = flightLog.issuesAndResponses
             it[takeoffLocation] = flightLog.takeoffLocation
             it[landingLocation] = flightLog.landingLocation

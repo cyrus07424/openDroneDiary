@@ -8,6 +8,7 @@ import io.ktor.http.*
 import com.opendronediary.model.FlightLog
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.FlightLogService
+import com.opendronediary.service.PilotService
 import com.opendronediary.service.SlackService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
@@ -17,7 +18,7 @@ import utils.RequestContextHelper
 import routing.bootstrapHead
 import java.math.BigDecimal
 
-fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService) {
+fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService, pilotService: PilotService) {
     // 飛行記録 CRUD - Authentication required
     route("/flightlogs") {
         get {
