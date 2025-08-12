@@ -9,7 +9,8 @@ data class FlightLog(
     val takeoffLandingLocation: String? = null, // 離着陸場所 (legacy field, keep for backward compatibility)
     val takeoffLandingTime: String? = null, // 離着陸時刻 (legacy field, keep for backward compatibility)
     val flightDuration: String? = null, // 飛行時間 (legacy field)
-    val pilotName: String, // 飛行させた者の氏名
+    val pilotName: String, // 飛行させた者の氏名 (free text or name from selected pilot)
+    val pilotId: Int? = null, // 登録済みパイロットのID (optional, if selected from registered pilots)
     val issuesAndResponses: String? = null, // 不具合やその対応 (optional)
     val userId: Int,
     // New enhanced fields

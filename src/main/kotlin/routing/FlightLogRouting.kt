@@ -8,6 +8,7 @@ import io.ktor.http.*
 import com.opendronediary.model.FlightLog
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.FlightLogService
+import com.opendronediary.service.PilotService
 import com.opendronediary.service.SlackService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
@@ -17,7 +18,7 @@ import utils.RequestContextHelper
 import routing.bootstrapHead
 import java.math.BigDecimal
 
-fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService) {
+fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService, pilotService: PilotService) {
     // 飛行記録 CRUD - Authentication required
     route("/flightlogs") {
         get {
@@ -52,7 +53,29 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
             if (contentType.match(ContentType.Application.FormUrlEncoded)) {
                 val params = call.receiveParameters()
                 val flightDate = params["flightDate"] ?: ""
-                val pilotName = params["pilotName"] ?: ""
+                
+                // Handle pilot selection - either from dropdown (pilotId) or free text (pilotName)
+                val pilotSelectionType = params["pilotSelectionType"] ?: "text"
+                val selectedPilotId = params["selectedPilotId"]?.toIntOrNull()
+                val pilotNameText = params["pilotNameText"]?.trim() ?: ""
+                
+                val (finalPilotName, finalPilotId) = when (pilotSelectionType) {
+                    "registered" -> {
+                        if (selectedPilotId != null) {
+                            // Get pilot name from registered pilot
+                            val pilot = pilotService.getByIdAndUserId(selectedPilotId, session.userId)
+                            if (pilot != null) {
+                                Pair(pilot.name, selectedPilotId)
+                            } else {
+                                Pair(pilotNameText, null) // Fallback to text if pilot not found
+                            }
+                        } else {
+                            Pair(pilotNameText, null) // Fallback to text if no pilot selected
+                        }
+                    }
+                    else -> Pair(pilotNameText, null) // Free text mode
+                }
+                
                 val issuesAndResponses = params["issuesAndResponses"]
                 
                 // Handle new fields
@@ -82,7 +105,8 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffLandingLocation = takeoffLandingLocation, 
                     takeoffLandingTime = takeoffLandingTime, 
                     flightDuration = flightDuration, 
-                    pilotName = pilotName, 
+                    pilotName = finalPilotName, 
+                    pilotId = finalPilotId,
                     issuesAndResponses = issuesAndResponses, 
                     userId = session.userId,
                     takeoffLocation = takeoffLocation,
@@ -108,7 +132,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                         username = session.username,
                         userAgent = userAgent,
                         ipAddress = ipAddress,
-                        additionalInfo = "飛行日: $flightDate, パイロット: $pilotName"
+                        additionalInfo = "飛行日: $flightDate, パイロット: $finalPilotName"
                     )
                 } catch (e: Exception) {
                     println("Error: " + "Failed to send Slack notification for flight log creation" + ": " + e.message)
@@ -188,6 +212,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 return@get
             }
             val flightLogs = flightLogService.getAllByUserId(session.userId)
+            val pilots = pilotService.getAllByUserId(session.userId)
             call.respondHtml {
                 head { 
                     bootstrapHead("飛行記録一覧")
@@ -320,10 +345,77 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                 }
                                                 div(classes = "col-md-6 mb-3") {
                                                     label(classes = "form-label") { +"飛行させた者の氏名" }
-                                                    textInput(classes = "form-control") { 
-                                                        name = "pilotName"
-                                                        placeholder = "操縦者名を入力してください"
-                                                        required = true
+                                                    div(classes = "card border-warning") {
+                                                        div(classes = "card-body p-3") {
+                                                            // Radio button selection for pilot input method
+                                                            div(classes = "row mb-3") {
+                                                                div(classes = "col-md-6") {
+                                                                    div(classes = "form-check") {
+                                                                        radioInput(classes = "form-check-input", name = "pilotSelectionType") {
+                                                                            value = "text"
+                                                                            id = "pilotSelectionText"
+                                                                            checked = true
+                                                                            attributes["onchange"] = "togglePilotSelectionMethod()"
+                                                                        }
+                                                                        label(classes = "form-check-label") {
+                                                                            htmlFor = "pilotSelectionText"
+                                                                            +"自由入力"
+                                                                        }
+                                                                    }
+                                                                }
+                                                                div(classes = "col-md-6") {
+                                                                    div(classes = "form-check") {
+                                                                        radioInput(classes = "form-check-input", name = "pilotSelectionType") {
+                                                                            value = "registered"
+                                                                            id = "pilotSelectionRegistered"
+                                                                            attributes["onchange"] = "togglePilotSelectionMethod()"
+                                                                        }
+                                                                        label(classes = "form-check-label") {
+                                                                            htmlFor = "pilotSelectionRegistered"
+                                                                            +"登録済みから選択"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            // Free text input section
+                                                            div(classes = "") {
+                                                                id = "pilotTextInputSection"
+                                                                textInput(classes = "form-control") { 
+                                                                    name = "pilotNameText"
+                                                                    id = "pilotNameTextInput"
+                                                                    placeholder = "操縦者名を入力してください"
+                                                                    required = true
+                                                                }
+                                                            }
+                                                            
+                                                            // Registered pilot selection section
+                                                            div(classes = "d-none") {
+                                                                id = "pilotSelectSection"
+                                                                select(classes = "form-select") {
+                                                                    name = "selectedPilotId"
+                                                                    id = "selectedPilotSelect"
+                                                                    option {
+                                                                        value = ""
+                                                                        +"パイロットを選択してください"
+                                                                    }
+                                                                    pilots.forEach { pilot ->
+                                                                        option {
+                                                                            value = pilot.id.toString()
+                                                                            +pilot.name
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if (pilots.isEmpty()) {
+                                                                    div(classes = "form-text text-muted") {
+                                                                        +"登録済みパイロットがありません。"
+                                                                        a(href = "/pilots/ui", classes = "btn btn-sm btn-outline-primary ms-2", target = "_blank") {
+                                                                            +"パイロット管理"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -701,6 +793,29 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                         defaultLat.toFixed(6) + ", " + defaultLng.toFixed(6);
                                     document.getElementById("landingCoordinatesDisplay").textContent = 
                                         defaultLat.toFixed(6) + ", " + defaultLng.toFixed(6);
+                                }
+                                
+                                // Toggle between free text and registered pilot selection methods
+                                function togglePilotSelectionMethod() {
+                                    const textMethod = document.getElementById("pilotSelectionText").checked;
+                                    const registeredMethod = document.getElementById("pilotSelectionRegistered").checked;
+                                    
+                                    const textSection = document.getElementById("pilotTextInputSection");
+                                    const selectSection = document.getElementById("pilotSelectSection");
+                                    const textInput = document.getElementById("pilotNameTextInput");
+                                    const selectInput = document.getElementById("selectedPilotSelect");
+                                    
+                                    if (textMethod) {
+                                        textSection.classList.remove("d-none");
+                                        selectSection.classList.add("d-none");
+                                        textInput.required = true;
+                                        selectInput.required = false;
+                                    } else if (registeredMethod) {
+                                        textSection.classList.add("d-none");
+                                        selectSection.classList.remove("d-none");
+                                        textInput.required = false;
+                                        selectInput.required = true;
+                                    }
                                 }
                             """.trimIndent()
                         }
@@ -1212,6 +1327,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 call.respond(HttpStatusCode.NotFound)
                 return@get
             }
+            val pilots = pilotService.getAllByUserId(session.userId)
             call.respondHtml {
                 head { 
                     bootstrapHead("飛行記録編集")
@@ -1252,10 +1368,93 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                 }
                                                 div(classes = "col-md-6 mb-3") {
                                                     label(classes = "form-label") { +"飛行させた者の氏名" }
-                                                    textInput(classes = "form-control") { 
-                                                        name = "pilotName"
-                                                        value = flightLog.pilotName
-                                                        required = true
+                                                    div(classes = "card border-warning") {
+                                                        div(classes = "card-body p-3") {
+                                                            // Radio button selection for pilot input method
+                                                            div(classes = "row mb-3") {
+                                                                div(classes = "col-md-6") {
+                                                                    div(classes = "form-check") {
+                                                                        radioInput(classes = "form-check-input", name = "pilotSelectionType") {
+                                                                            value = "text"
+                                                                            attributes["id"] = "pilotSelectionTextEdit"
+                                                                            // Check if current pilot is not from registered pilots
+                                                                            if (flightLog.pilotId == null) {
+                                                                                checked = true
+                                                                            }
+                                                                            attributes["onchange"] = "togglePilotSelectionMethodEdit()"
+                                                                        }
+                                                                        label(classes = "form-check-label") {
+                                                                            htmlFor = "pilotSelectionTextEdit"
+                                                                            +"自由入力"
+                                                                        }
+                                                                    }
+                                                                }
+                                                                div(classes = "col-md-6") {
+                                                                    div(classes = "form-check") {
+                                                                        radioInput(classes = "form-check-input", name = "pilotSelectionType") {
+                                                                            value = "registered"
+                                                                            attributes["id"] = "pilotSelectionRegisteredEdit"
+                                                                            // Check if current pilot is from registered pilots
+                                                                            if (flightLog.pilotId != null) {
+                                                                                checked = true
+                                                                            }
+                                                                            attributes["onchange"] = "togglePilotSelectionMethodEdit()"
+                                                                        }
+                                                                        label(classes = "form-check-label") {
+                                                                            htmlFor = "pilotSelectionRegisteredEdit"
+                                                                            +"登録済みから選択"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            // Free text input section
+                                                            div(classes = if (flightLog.pilotId != null) "d-none" else "") {
+                                                                attributes["id"] = "pilotTextInputSectionEdit"
+                                                                textInput(classes = "form-control") { 
+                                                                    name = "pilotNameText"
+                                                                    attributes["id"] = "pilotNameTextInputEdit"
+                                                                    placeholder = "操縦者名を入力してください"
+                                                                    value = if (flightLog.pilotId == null) flightLog.pilotName else ""
+                                                                    if (flightLog.pilotId == null) {
+                                                                        required = true
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            // Registered pilot selection section
+                                                            div(classes = if (flightLog.pilotId == null) "d-none" else "") {
+                                                                attributes["id"] = "pilotSelectSectionEdit"
+                                                                select(classes = "form-select") {
+                                                                    name = "selectedPilotId"
+                                                                    attributes["id"] = "selectedPilotSelectEdit"
+                                                                    if (flightLog.pilotId != null) {
+                                                                        required = true
+                                                                    }
+                                                                    option {
+                                                                        value = ""
+                                                                        +"パイロットを選択してください"
+                                                                    }
+                                                                    pilots.forEach { pilot ->
+                                                                        option {
+                                                                            value = pilot.id.toString()
+                                                                            if (pilot.id == flightLog.pilotId) {
+                                                                                selected = true
+                                                                            }
+                                                                            +pilot.name
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if (pilots.isEmpty()) {
+                                                                    div(classes = "form-text text-muted") {
+                                                                        +"登録済みパイロットがありません。"
+                                                                        a(href = "/pilots/ui", classes = "btn btn-sm btn-outline-primary ms-2", target = "_blank") {
+                                                                            +"パイロット管理"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1567,6 +1766,29 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                     }
                                 }
                                 
+                                // Toggle between free text and registered pilot selection methods for edit form
+                                function togglePilotSelectionMethodEdit() {
+                                    const textMethod = document.getElementById("pilotSelectionTextEdit").checked;
+                                    const registeredMethod = document.getElementById("pilotSelectionRegisteredEdit").checked;
+                                    
+                                    const textSection = document.getElementById("pilotTextInputSectionEdit");
+                                    const selectSection = document.getElementById("pilotSelectSectionEdit");
+                                    const textInput = document.getElementById("pilotNameTextInputEdit");
+                                    const selectInput = document.getElementById("selectedPilotSelectEdit");
+                                    
+                                    if (textMethod) {
+                                        textSection.classList.remove("d-none");
+                                        selectSection.classList.add("d-none");
+                                        textInput.required = true;
+                                        selectInput.required = false;
+                                    } else if (registeredMethod) {
+                                        textSection.classList.add("d-none");
+                                        selectSection.classList.remove("d-none");
+                                        textInput.required = false;
+                                        selectInput.required = true;
+                                    }
+                                }
+                                
                                 // Initialize maps on page load if coordinate method is selected
                                 document.addEventListener('DOMContentLoaded', function() {
                                     if (document.getElementById("inputMethodCoordinatesEdit").checked) {
@@ -1593,7 +1815,29 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 "put" -> {
                     if (id != null) {
                         val flightDate = params["flightDate"] ?: ""
-                        val pilotName = params["pilotName"] ?: ""
+                        
+                        // Handle pilot selection - either from dropdown (pilotId) or free text (pilotName)
+                        val pilotSelectionType = params["pilotSelectionType"] ?: "text"
+                        val selectedPilotId = params["selectedPilotId"]?.toIntOrNull()
+                        val pilotNameText = params["pilotNameText"]?.trim() ?: ""
+                        
+                        val (finalPilotName, finalPilotId) = when (pilotSelectionType) {
+                            "registered" -> {
+                                if (selectedPilotId != null) {
+                                    // Get pilot name from registered pilot
+                                    val pilot = pilotService.getByIdAndUserId(selectedPilotId, session.userId)
+                                    if (pilot != null) {
+                                        Pair(pilot.name, selectedPilotId)
+                                    } else {
+                                        Pair(pilotNameText, null) // Fallback to text if pilot not found
+                                    }
+                                } else {
+                                    Pair(pilotNameText, null) // Fallback to text if no pilot selected
+                                }
+                            }
+                            else -> Pair(pilotNameText, null) // Free text mode
+                        }
+                        
                         val issuesAndResponses = params["issuesAndResponses"]
                         
                         // Handle new fields
@@ -1623,7 +1867,8 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                             takeoffLandingLocation = takeoffLandingLocation, 
                             takeoffLandingTime = takeoffLandingTime, 
                             flightDuration = flightDuration, 
-                            pilotName = pilotName, 
+                            pilotName = finalPilotName, 
+                            pilotId = finalPilotId,
                             issuesAndResponses = issuesAndResponses, 
                             userId = session.userId,
                             takeoffLocation = takeoffLocation,
@@ -1669,7 +1914,29 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
             if (contentType.match(ContentType.Application.FormUrlEncoded)) {
                 val params = call.receiveParameters()
                 val flightDate = params["flightDate"] ?: ""
-                val pilotName = params["pilotName"] ?: ""
+                
+                // Handle pilot selection - either from dropdown (pilotId) or free text (pilotName)
+                val pilotSelectionType = params["pilotSelectionType"] ?: "text"
+                val selectedPilotId = params["selectedPilotId"]?.toIntOrNull()
+                val pilotNameText = params["pilotNameText"]?.trim() ?: ""
+                
+                val (finalPilotName, finalPilotId) = when (pilotSelectionType) {
+                    "registered" -> {
+                        if (selectedPilotId != null) {
+                            // Get pilot name from registered pilot
+                            val pilot = pilotService.getByIdAndUserId(selectedPilotId, session.userId)
+                            if (pilot != null) {
+                                Pair(pilot.name, selectedPilotId)
+                            } else {
+                                Pair(pilotNameText, null) // Fallback to text if pilot not found
+                            }
+                        } else {
+                            Pair(pilotNameText, null) // Fallback to text if no pilot selected
+                        }
+                    }
+                    else -> Pair(pilotNameText, null) // Free text mode
+                }
+                
                 val issuesAndResponses = params["issuesAndResponses"]
                 
                 // Handle new fields
@@ -1699,7 +1966,8 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffLandingLocation = takeoffLandingLocation, 
                     takeoffLandingTime = takeoffLandingTime, 
                     flightDuration = flightDuration, 
-                    pilotName = pilotName, 
+                    pilotName = finalPilotName, 
+                    pilotId = finalPilotId,
                     issuesAndResponses = issuesAndResponses, 
                     userId = session.userId,
                     takeoffLocation = takeoffLocation,

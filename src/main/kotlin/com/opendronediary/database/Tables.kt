@@ -21,7 +21,8 @@ object FlightLogs : Table() {
     val takeoffLandingLocation = varchar("takeoff_landing_location", 255).nullable() // Keep for backward compatibility
     val takeoffLandingTime = varchar("takeoff_landing_time", 20).nullable() // Keep for backward compatibility
     val flightDuration = varchar("flight_duration", 20).nullable() // Make nullable
-    val pilotName = varchar("pilot_name", 100)
+    val pilotName = varchar("pilot_name", 100) // Keep for backward compatibility and free text entry
+    val pilotId = integer("pilot_id").references(Pilots.id).nullable() // Reference to registered pilot
     val issuesAndResponses = varchar("issues_and_responses", 1000).nullable()
     val userId = integer("user_id").references(Users.id)
     
@@ -67,6 +68,16 @@ object MaintenanceInspectionRecords : Table() {
     val inspectorName = varchar("inspector_name", 100)
     val contentAndReason = varchar("content_and_reason", 1000)
     val userId = integer("user_id").references(Users.id)
+    val createdAt = datetime("created_at").default(LocalDateTime.now())
+    val updatedAt = datetime("updated_at").default(LocalDateTime.now())
+    
+    override val primaryKey = PrimaryKey(id)
+}
+
+object Pilots : Table() {
+    val id = integer("id").autoIncrement()
+    val name = varchar("name", 100) // パイロット氏名
+    val userId = integer("user_id").references(Users.id) // 登録したユーザーID
     val createdAt = datetime("created_at").default(LocalDateTime.now())
     val updatedAt = datetime("updated_at").default(LocalDateTime.now())
     
