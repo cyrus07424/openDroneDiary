@@ -15,6 +15,7 @@ import utils.GTMHelper.addGTMBodyScript
 import utils.PolicyHelper.addFooter
 import utils.RequestContextHelper
 import routing.bootstrapHead
+import routing.addFormSubmissionModal
 import java.math.BigDecimal
 
 fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService) {
@@ -484,6 +485,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                             }
                         }
                     }
+                    addFormSubmissionModal()
                     addFooter()
                     
                     // Modal dialog for viewing coordinates on map
@@ -755,6 +757,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                             }
                         }
                     }
+                    addFormSubmissionModal()
                     addFooter()
                     
                     // FullCalendar initialization script

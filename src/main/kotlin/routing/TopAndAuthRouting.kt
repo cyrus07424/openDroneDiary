@@ -19,6 +19,112 @@ import utils.PolicyHelper.isTermsOfServiceEnabled
 import utils.PolicyHelper.getTermsOfServiceUrl
 import utils.RequestContextHelper
 
+// Helper function to add form submission modal dialog and JavaScript
+fun BODY.addFormSubmissionModal() {
+    // Modal dialog for form submission loading
+    div(classes = "modal fade") {
+        id = "loadingModal"
+        attributes["data-bs-backdrop"] = "static"
+        attributes["data-bs-keyboard"] = "false"
+        div(classes = "modal-dialog modal-dialog-centered") {
+            div(classes = "modal-content") {
+                div(classes = "modal-body text-center py-4") {
+                    div(classes = "spinner-border text-primary mb-3") {
+                        attributes["role"] = "status"
+                        span(classes = "visually-hidden") { +"読み込み中..." }
+                    }
+                    h5(classes = "modal-title") { 
+                        id = "loadingModalMessage"
+                        +"処理中です..." 
+                    }
+                    p(classes = "text-muted mb-0") { +"しばらくお待ちください" }
+                }
+            }
+        }
+    }
+    
+    // JavaScript for form submission handling
+    script(type = "text/javascript") {
+        unsafe {
+            +"""
+            // Form submission messages mapping
+            const FORM_MESSAGES = {
+                'create': '登録中です...',
+                'update': '更新中です...',
+                'delete': '削除中です...',
+                'login': 'ログイン中です...',
+                'register': '登録中です...',
+                'reset': 'メール送信中です...',
+                'password-update': 'パスワード更新中です...',
+                'default': '処理中です...'
+            };
+            
+            // Function to get appropriate message based on form action and content
+            function getFormMessage(form) {
+                const action = form.getAttribute('action') || '';
+                const submitValue = form.querySelector('input[type="submit"]')?.value || '';
+                
+                // Check for delete action
+                if (form.querySelector('input[name="_method"][value="delete"]') || 
+                    submitValue.includes('削除')) {
+                    return FORM_MESSAGES.delete;
+                }
+                
+                // Check by submit button text
+                if (submitValue.includes('ログイン')) return FORM_MESSAGES.login;
+                if (submitValue.includes('登録')) return FORM_MESSAGES.register;
+                if (submitValue.includes('更新')) return FORM_MESSAGES.update;
+                if (submitValue.includes('追加')) return FORM_MESSAGES.create;
+                if (submitValue.includes('リセット') || submitValue.includes('送信')) return FORM_MESSAGES.reset;
+                if (submitValue.includes('パスワード')) return FORM_MESSAGES['password-update'];
+                
+                // Check by URL path
+                if (action.includes('/login')) return FORM_MESSAGES.login;
+                if (action.includes('/register')) return FORM_MESSAGES.register;
+                if (action.includes('/forgot-password')) return FORM_MESSAGES.reset;
+                if (action.includes('/reset-password')) return FORM_MESSAGES['password-update'];
+                
+                // Default for POST to creation endpoints
+                if (action && !action.includes('/ui/')) return FORM_MESSAGES.create;
+                
+                return FORM_MESSAGES.default;
+            }
+            
+            // Add event listeners to all forms when DOM is loaded
+            document.addEventListener('DOMContentLoaded', function() {
+                const forms = document.querySelectorAll('form');
+                const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+                const modalMessage = document.getElementById('loadingModalMessage');
+                
+                forms.forEach(function(form) {
+                    form.addEventListener('submit', function(e) {
+                        // Get the submit button that was clicked
+                        const submitButton = form.querySelector('input[type="submit"]');
+                        
+                        // Disable the submit button to prevent double-clicking
+                        if (submitButton) {
+                            submitButton.disabled = true;
+                        }
+                        
+                        // Set appropriate message and show modal
+                        const message = getFormMessage(form);
+                        modalMessage.textContent = message;
+                        modal.show();
+                        
+                        // Re-enable submit button after a delay in case of errors
+                        setTimeout(function() {
+                            if (submitButton) {
+                                submitButton.disabled = false;
+                            }
+                        }, 5000);
+                    });
+                });
+            });
+            """
+        }
+    }
+}
+
 // Helper function to create Bootstrap head with CDN links and SEO meta tags
 fun HEAD.bootstrapHead(pageTitle: String, includeSEO: Boolean = false) {
     val fullTitle = if (pageTitle.contains("OpenDroneDiary")) pageTitle else "$pageTitle - OpenDroneDiary"
@@ -148,6 +254,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                         }
                     }
                 }
+                addFormSubmissionModal()
                 addFooter()
             }
         }
@@ -277,6 +384,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                         }
                     }
                 }
+                addFormSubmissionModal()
                 addFooter()
             }
         }
