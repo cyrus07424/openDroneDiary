@@ -14,6 +14,7 @@ import kotlinx.html.*
 import utils.GTMHelper.addGTMBodyScript
 import utils.RequestContextHelper
 import routing.bootstrapHead
+import routing.addFormSubmissionModal
 
 fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordService: MaintenanceInspectionRecordService, slackService: SlackService) {
     // Maintenance Inspection Record UI routes
@@ -131,6 +132,7 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                             }
                         }
                     }
+                    addFormSubmissionModal()
                 }
             }
         }
@@ -218,6 +220,7 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                             }
                         }
                     }
+                    addFormSubmissionModal()
                 }
             }
         }
