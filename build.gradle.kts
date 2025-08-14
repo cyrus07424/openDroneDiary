@@ -34,10 +34,10 @@ dependencies {
     implementation("com.sun.mail:javax.mail:1.6.2")
     
     // Database dependencies
-    implementation("org.jetbrains.exposed:exposed-core:0.50.1")
-    implementation("org.jetbrains.exposed:exposed-dao:0.50.1")
-    implementation("org.jetbrains.exposed:exposed-jdbc:0.50.1")
-    implementation("org.jetbrains.exposed:exposed-java-time:0.50.1")
+    implementation("org.jetbrains.exposed:exposed-core:0.61.0")
+    implementation("org.jetbrains.exposed:exposed-dao:0.61.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.61.0")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.61.0")
     implementation("org.postgresql:postgresql:42.7.7")
     implementation("com.zaxxer:HikariCP:7.0.1")
     
