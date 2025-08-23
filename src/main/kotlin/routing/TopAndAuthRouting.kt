@@ -8,6 +8,8 @@ import io.ktor.server.sessions.*
 import io.ktor.http.*
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.UserService
+import com.opendronediary.service.RegisterResult
+import com.opendronediary.service.ResetPasswordResult
 import com.opendronediary.service.EmailService
 import com.opendronediary.service.SlackService
 import io.ktor.server.html.respondHtml
@@ -455,52 +457,90 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
             return@post
         }
         
-        val user = userService.register(username, password, email)
-        if (user != null) {
-            // Send welcome email
-            emailService.sendWelcomeEmail(email, username)
-            
-            // Send Slack notification for new user registration
-            try {
-                val userAgent = RequestContextHelper.extractUserAgent(call)
-                val ipAddress = RequestContextHelper.extractIpAddress(call)
-                slackService.sendNotification(
-                    action = "新規ユーザー登録",
-                    username = user.username,
-                    userAgent = userAgent,
-                    ipAddress = ipAddress,
-                    additionalInfo = "メールアドレス: $email"
-                )
-            } catch (e: Exception) {
-                // Log error but don't fail the registration process
-                call.application.log.error("Failed to send Slack notification for registration", e)
+        val result = userService.register(username, password, email)
+        when (result) {
+            is RegisterResult.Success -> {
+                val user = result.user
+                // Send welcome email
+                emailService.sendWelcomeEmail(email, username)
+                
+                // Send Slack notification for new user registration
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "新規ユーザー登録",
+                        username = user.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "メールアドレス: $email"
+                    )
+                } catch (e: Exception) {
+                    // Log error but don't fail the registration process
+                    call.application.log.error("Failed to send Slack notification for registration", e)
+                }
+                
+                call.sessions.set(UserSession(user.id, user.username))
+                call.respondRedirect("/")
             }
-            
-            call.sessions.set(UserSession(user.id, user.username))
-            call.respondRedirect("/")
-        } else {
-            call.respondHtml(HttpStatusCode.Conflict) {
-                head { bootstrapHead("登録エラー") }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    div(classes = "container mt-5") {
-                        div(classes = "row justify-content-center") {
-                            div(classes = "col-md-6") {
-                                div(classes = "card") {
-                                    div(classes = "card-header") {
-                                        h1(classes = "card-title mb-0") { +"登録エラー" }
-                                    }
-                                    div(classes = "card-body") {
-                                        div(classes = "alert alert-warning") {
-                                            +"そのユーザー名またはメールアドレスは既に使用されています。"
+            is RegisterResult.Failure -> {
+                call.respondHtml(HttpStatusCode.Conflict) {
+                    head { bootstrapHead("登録エラー") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"登録エラー" }
                                         }
-                                        a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-danger") {
+                                                +result.message
+                                            }
+                                            a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                        }
                                     }
                                 }
                             }
                         }
+                        addFooter()
                     }
-                    addFooter()
+                }
+            }
+            is RegisterResult.WeakPassword -> {
+                call.respondHtml(HttpStatusCode.BadRequest) {
+                    head { bootstrapHead("パスワード強度エラー") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"パスワード強度不足" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-warning") {
+                                                strong { +result.validation.feedback }
+                                                if (result.validation.suggestions.isNotEmpty()) {
+                                                    br()
+                                                    +"推奨：${result.validation.suggestions}"
+                                                }
+                                                if (result.validation.warning.isNotEmpty()) {
+                                                    br()
+                                                    +"警告：${result.validation.warning}"
+                                                }
+                                            }
+                                            a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        addFooter()
+                    }
                 }
             }
         }
@@ -737,55 +777,118 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
             return@post
         }
         
-        val success = userService.resetPassword(token, password)
-        if (success) {
-            call.respondHtml {
-                head { bootstrapHead("パスワード更新完了") }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    div(classes = "container mt-5") {
-                        div(classes = "row justify-content-center") {
-                            div(classes = "col-md-6") {
-                                div(classes = "card") {
-                                    div(classes = "card-header") {
-                                        h1(classes = "card-title mb-0") { +"パスワード更新完了" }
-                                    }
-                                    div(classes = "card-body") {
-                                        div(classes = "alert alert-success") {
-                                            +"パスワードが正常に更新されました。"
+        val result = userService.resetPassword(token, password)
+        when (result) {
+            is ResetPasswordResult.Success -> {
+                call.respondHtml {
+                    head { bootstrapHead("パスワード更新完了") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"パスワード更新完了" }
                                         }
-                                        a(href = "/login", classes = "btn btn-primary") { +"ログインする" }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-success") {
+                                                +"パスワードが正常に更新されました。"
+                                            }
+                                            a(href = "/login", classes = "btn btn-primary") { +"ログインする" }
+                                        }
                                     }
                                 }
                             }
                         }
+                        addFooter()
                     }
-                    addFooter()
                 }
             }
-        } else {
-            call.respondHtml(HttpStatusCode.BadRequest) {
-                head { bootstrapHead("エラー") }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    div(classes = "container mt-5") {
-                        div(classes = "row justify-content-center") {
-                            div(classes = "col-md-6") {
-                                div(classes = "card") {
-                                    div(classes = "card-header") {
-                                        h1(classes = "card-title mb-0") { +"トークンエラー" }
-                                    }
-                                    div(classes = "card-body") {
-                                        div(classes = "alert alert-danger") {
-                                            +"無効なトークンまたは期限が切れています。"
+            is ResetPasswordResult.InvalidToken -> {
+                call.respondHtml(HttpStatusCode.BadRequest) {
+                    head { bootstrapHead("エラー") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"トークンエラー" }
                                         }
-                                        a(href = "/forgot-password", classes = "btn btn-primary") { +"新しくリセットを申請" }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-danger") {
+                                                +"無効なトークンまたは期限が切れています。"
+                                            }
+                                            a(href = "/forgot-password", classes = "btn btn-primary") { +"新しくリセットを申請" }
+                                        }
                                     }
                                 }
                             }
                         }
+                        addFooter()
                     }
-                    addFooter()
+                }
+            }
+            is ResetPasswordResult.Failure -> {
+                call.respondHtml(HttpStatusCode.InternalServerError) {
+                    head { bootstrapHead("エラー") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"システムエラー" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-danger") {
+                                                +"パスワードの更新に失敗しました。しばらく待ってから再試行してください。"
+                                            }
+                                            a(href = "/reset-password?token=$token", classes = "btn btn-primary") { +"戻る" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        addFooter()
+                    }
+                }
+            }
+            is ResetPasswordResult.WeakPassword -> {
+                call.respondHtml(HttpStatusCode.BadRequest) {
+                    head { bootstrapHead("パスワード強度エラー") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"パスワード強度不足" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-warning") {
+                                                strong { +result.validation.feedback }
+                                                if (result.validation.suggestions.isNotEmpty()) {
+                                                    br()
+                                                    +"推奨：${result.validation.suggestions}"
+                                                }
+                                                if (result.validation.warning.isNotEmpty()) {
+                                                    br()
+                                                    +"警告：${result.validation.warning}"
+                                                }
+                                            }
+                                            a(href = "/reset-password?token=$token", classes = "btn btn-primary") { +"戻る" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        addFooter()
+                    }
                 }
             }
         }
