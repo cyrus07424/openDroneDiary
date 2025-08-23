@@ -127,6 +127,129 @@ fun BODY.addFormSubmissionModal() {
     }
 }
 
+// Helper function to add password strength meter CSS and JavaScript
+fun BODY.addPasswordStrengthMeter() {
+    // Add CSS for password strength meter
+    style(type = "text/css") {
+        unsafe {
+            +"""
+            .password-strength-bar {
+                width: 100%;
+                height: 8px;
+                background-color: #e0e0e0;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+            
+            .password-strength-fill {
+                height: 100%;
+                transition: width 0.3s ease, background-color 0.3s ease;
+                width: 0%;
+                background-color: #dc3545;
+            }
+            
+            .password-strength-text {
+                font-size: 0.875rem;
+                font-weight: 500;
+            }
+            
+            .strength-very-weak .password-strength-fill { background-color: #dc3545; width: 20%; }
+            .strength-weak .password-strength-fill { background-color: #fd7e14; width: 40%; }
+            .strength-fair .password-strength-fill { background-color: #ffc107; width: 60%; }
+            .strength-good .password-strength-fill { background-color: #198754; width: 80%; }
+            .strength-strong .password-strength-fill { background-color: #0d6efd; width: 100%; }
+            
+            .text-very-weak { color: #dc3545; }
+            .text-weak { color: #fd7e14; }
+            .text-fair { color: #ffc107; }
+            .text-good { color: #198754; }
+            .text-strong { color: #0d6efd; }
+            """
+        }
+    }
+    
+    // Add JavaScript for password strength checking
+    script(type = "text/javascript") {
+        unsafe {
+            +"""
+            function checkPasswordStrength(passwordFieldId, meterContainerId) {
+                const password = document.getElementById(passwordFieldId).value;
+                const meterContainer = document.getElementById(meterContainerId);
+                
+                // Determine element IDs based on the meter container
+                let strengthFillId, strengthTextId;
+                if (meterContainerId === 'passwordStrengthMeter') {
+                    strengthFillId = 'passwordStrengthFill';
+                    strengthTextId = 'passwordStrengthText';
+                } else if (meterContainerId === 'resetPasswordStrengthMeter') {
+                    strengthFillId = 'resetPasswordStrengthFill';
+                    strengthTextId = 'resetPasswordStrengthText';
+                } else {
+                    return; // Unknown meter container
+                }
+                
+                const strengthFill = document.getElementById(strengthFillId);
+                const strengthText = document.getElementById(strengthTextId);
+                
+                if (!strengthFill || !strengthText) return;
+                
+                if (password.length === 0) {
+                    meterContainer.style.display = 'none';
+                    return;
+                }
+                
+                meterContainer.style.display = 'block';
+                
+                // Simple client-side strength calculation (basic heuristics)
+                let score = 0;
+                let feedback = '';
+                
+                // Length check
+                if (password.length >= 8) score += 1;
+                if (password.length >= 12) score += 1;
+                
+                // Character variety checks
+                if (/[a-z]/.test(password)) score += 1;
+                if (/[A-Z]/.test(password)) score += 1;
+                if (/[0-9]/.test(password)) score += 1;
+                if (/[^A-Za-z0-9]/.test(password)) score += 1;
+                
+                // Common patterns penalty
+                if (/^(password|123456|qwerty)/i.test(password)) score = Math.max(0, score - 2);
+                
+                // Remove all previous strength classes
+                meterContainer.classList.remove('strength-very-weak', 'strength-weak', 'strength-fair', 'strength-good', 'strength-strong');
+                strengthText.classList.remove('text-very-weak', 'text-weak', 'text-fair', 'text-good', 'text-strong');
+                
+                if (score <= 1) {
+                    meterContainer.classList.add('strength-very-weak');
+                    strengthText.classList.add('text-very-weak');
+                    feedback = '非常に弱いパスワードです';
+                } else if (score <= 2) {
+                    meterContainer.classList.add('strength-weak');
+                    strengthText.classList.add('text-weak');
+                    feedback = '弱いパスワードです';
+                } else if (score <= 3) {
+                    meterContainer.classList.add('strength-fair');
+                    strengthText.classList.add('text-fair');
+                    feedback = '普通のパスワードです';
+                } else if (score <= 4) {
+                    meterContainer.classList.add('strength-good');
+                    strengthText.classList.add('text-good');
+                    feedback = '良いパスワードです';
+                } else {
+                    meterContainer.classList.add('strength-strong');
+                    strengthText.classList.add('text-strong');
+                    feedback = '非常に強いパスワードです';
+                }
+                
+                strengthText.textContent = feedback;
+            }
+            """
+        }
+    }
+}
+
 // Helper function to create Bootstrap head with CDN links and SEO meta tags
 fun HEAD.bootstrapHead(pageTitle: String, includeSEO: Boolean = false) {
     val fullTitle = if (pageTitle.contains("OpenDroneDiary")) pageTitle else "$pageTitle - OpenDroneDiary"
@@ -350,8 +473,25 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                             label(classes = "form-label") { +"パスワード" }
                                             passwordInput(classes = "form-control") { 
                                                 name = "password"
+                                                id = "registerPassword"
                                                 placeholder = "パスワードを入力してください"
                                                 required = true
+                                                attributes["onkeyup"] = "checkPasswordStrength('registerPassword', 'passwordStrengthMeter')"
+                                            }
+                                            // Password strength meter
+                                            div(classes = "mt-2") {
+                                                div(classes = "password-strength-meter") {
+                                                    id = "passwordStrengthMeter"
+                                                    style = "display: none;"
+                                                    div(classes = "password-strength-bar") {
+                                                        div(classes = "password-strength-fill") {
+                                                            id = "passwordStrengthFill"
+                                                        }
+                                                    }
+                                                    div(classes = "password-strength-text mt-1") {
+                                                        id = "passwordStrengthText"
+                                                    }
+                                                }
                                             }
                                         }
                                         
@@ -387,6 +527,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                         }
                     }
                 }
+                addPasswordStrengthMeter()
                 addFormSubmissionModal()
                 addFooter()
             }
@@ -687,9 +828,26 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                             label(classes = "form-label") { +"新しいパスワード" }
                                             passwordInput(classes = "form-control") { 
                                                 name = "password"
+                                                id = "resetPassword"
                                                 placeholder = "新しいパスワードを入力してください"
                                                 required = true
                                                 minLength = "6"
+                                                attributes["onkeyup"] = "checkPasswordStrength('resetPassword', 'resetPasswordStrengthMeter')"
+                                            }
+                                            // Password strength meter
+                                            div(classes = "mt-2") {
+                                                div(classes = "password-strength-meter") {
+                                                    id = "resetPasswordStrengthMeter"
+                                                    style = "display: none;"
+                                                    div(classes = "password-strength-bar") {
+                                                        div(classes = "password-strength-fill") {
+                                                            id = "resetPasswordStrengthFill"
+                                                        }
+                                                    }
+                                                    div(classes = "password-strength-text mt-1") {
+                                                        id = "resetPasswordStrengthText"
+                                                    }
+                                                }
                                             }
                                         }
                                         div(classes = "mb-3") {
@@ -710,6 +868,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                         }
                     }
                 }
+                addPasswordStrengthMeter()
                 addFooter()
             }
         }
