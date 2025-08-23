@@ -8,19 +8,27 @@ import java.time.LocalDateTime
 import java.util.*
 
 class UserService(private val repository: UserRepository) {
+    private val passwordStrengthService = PasswordStrengthService()
     
-    fun register(username: String, password: String, email: String): User? {
+    fun register(username: String, password: String, email: String): RegisterResult {
         if (repository.findByUsername(username) != null) {
-            return null // User already exists
+            return RegisterResult.Failure("ユーザー名が既に使用されています")
         }
         
         // Check if email is already used
         if (repository.findByEmail(email) != null) {
-            return null // Email already used
+            return RegisterResult.Failure("メールアドレスが既に使用されています")
+        }
+        
+        // Validate password strength
+        val passwordValidation = passwordStrengthService.validatePassword(password, listOf(username, email))
+        if (!passwordValidation.isValid) {
+            return RegisterResult.WeakPassword(passwordValidation)
         }
         
         val passwordHash = hashPassword(password)
-        return repository.add(User(0, username, passwordHash, email))
+        val user = repository.add(User(0, username, passwordHash, email))
+        return RegisterResult.Success(user)
     }
     
     fun login(username: String, password: String): User? {
@@ -51,18 +59,25 @@ class UserService(private val repository: UserRepository) {
         }
     }
     
-    fun resetPassword(token: String, newPassword: String): Boolean {
-        val email = repository.findValidPasswordResetToken(token) ?: return false
-        val user = repository.findByEmail(email) ?: return false
+    fun resetPassword(token: String, newPassword: String): ResetPasswordResult {
+        val email = repository.findValidPasswordResetToken(token) ?: return ResetPasswordResult.InvalidToken
+        val user = repository.findByEmail(email) ?: return ResetPasswordResult.InvalidToken
+        
+        // Validate password strength
+        val passwordValidation = passwordStrengthService.validatePassword(newPassword, listOf(user.username, email))
+        if (!passwordValidation.isValid) {
+            return ResetPasswordResult.WeakPassword(passwordValidation)
+        }
         
         val newPasswordHash = hashPassword(newPassword)
         val updated = repository.updatePassword(user.id, newPasswordHash)
         
         if (updated) {
             repository.markPasswordResetTokenAsUsed(token)
+            return ResetPasswordResult.Success
         }
         
-        return updated
+        return ResetPasswordResult.Failure
     }
     
     private fun hashPassword(password: String): String {
@@ -89,4 +104,20 @@ class UserService(private val repository: UserRepository) {
         random.nextBytes(bytes)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
+}
+
+/**
+ * Result classes for user operations
+ */
+sealed class RegisterResult {
+    data class Success(val user: User) : RegisterResult()
+    data class Failure(val message: String) : RegisterResult()
+    data class WeakPassword(val validation: PasswordValidationResult) : RegisterResult()
+}
+
+sealed class ResetPasswordResult {
+    object Success : ResetPasswordResult()
+    object InvalidToken : ResetPasswordResult()
+    object Failure : ResetPasswordResult()
+    data class WeakPassword(val validation: PasswordValidationResult) : ResetPasswordResult()
 }

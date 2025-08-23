@@ -47,6 +47,9 @@ dependencies {
     // bcrypt for password hashing
     implementation("org.mindrot:jbcrypt:0.4")
     
+    // zxcvbn for password strength validation
+    implementation("com.nulab-inc:zxcvbn:1.9.0")
+    
     // HTTP client for Slack notifications
     implementation("io.ktor:ktor-client-core:3.2.3")
     implementation("io.ktor:ktor-client-cio:3.2.3")
