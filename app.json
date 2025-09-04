@@ -1,0 +1,105 @@
+{
+  "name": "OpenDroneDiary",
+  "description": "An open-source tool for managing drone flight logs. Provides features for tracking, analyzing, and managing flight data for drone pilots and aviation enthusiasts.",
+  "repository": "https://github.com/cyrus07424/openDroneDiary",
+  "logo": "",
+  "keywords": [
+    "drone",
+    "flight-log",
+    "aviation",
+    "kotlin",
+    "ktor",
+    "postgresql",
+    "heroku"
+  ],
+  "website": "",
+  "success_url": "/",
+  "env": {
+    "DATABASE_URL": {
+      "description": "PostgreSQL database connection URL. Automatically provided by Heroku Postgres add-on.",
+      "required": false
+    },
+    "SMTP_HOST": {
+      "description": "SMTP server hostname for sending emails (e.g., smtp.gmail.com)",
+      "required": false
+    },
+    "SMTP_USERNAME": {
+      "description": "SMTP authentication username",
+      "required": false
+    },
+    "SMTP_PASSWORD": {
+      "description": "SMTP authentication password",
+      "required": false
+    },
+    "SMTP_PORT": {
+      "description": "SMTP server port (default: 587)",
+      "value": "587",
+      "required": false
+    },
+    "SMTP_FROM_EMAIL": {
+      "description": "From email address for outgoing emails",
+      "value": "noreply@opendronediary.com",
+      "required": false
+    },
+    "SMTP_FROM_NAME": {
+      "description": "From display name for outgoing emails",
+      "value": "OpenDroneDiary",
+      "required": false
+    },
+    "SMTP_USE_TLS": {
+      "description": "Enable STARTTLS for SMTP connection",
+      "value": "true",
+      "required": false
+    },
+    "SMTP_USE_SSL": {
+      "description": "Enable SSL/TLS for SMTP connection",
+      "value": "false",
+      "required": false
+    },
+    "BASE_URL": {
+      "description": "Base URL for the application, used in email links",
+      "required": false
+    },
+    "SLACK_WEBHOOK_URL": {
+      "description": "Slack webhook URL for sending notifications about user activities",
+      "required": false
+    },
+    "GTM_ID": {
+      "description": "Google Tag Manager container ID for analytics tracking",
+      "required": false
+    },
+    "TERMS_OF_SERVICE_URL": {
+      "description": "URL for terms of service page (enables terms checkbox on registration)",
+      "required": false
+    },
+    "PRIVACY_POLICY_URL": {
+      "description": "URL for privacy policy page (displays link in footer)",
+      "required": false
+    },
+    "LP_TOP_PAGE_URL": {
+      "description": "URL for landing page top page (displays link in footer)",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini",
+      "as": "DATABASE"
+    }
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/gradle"
+    }
+  ],
+  "stack": "heroku-22",
+  "scripts": {
+    "postdeploy": "echo 'Deployment completed successfully'"
+  }
+}
