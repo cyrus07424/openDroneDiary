@@ -17,7 +17,7 @@
   "env": {
     "DATABASE_URL": {
       "description": "PostgreSQL database connection URL. Automatically provided by Heroku Postgres add-on.",
-      "required": false
+      "required": true
     },
     "SMTP_HOST": {
       "description": "SMTP server hostname for sending emails (e.g., smtp.gmail.com)",
@@ -98,7 +98,7 @@
       "url": "heroku/gradle"
     }
   ],
-  "stack": "heroku-22",
+  "stack": "heroku-24",
   "scripts": {
     "postdeploy": "echo 'Deployment completed successfully'"
   }
