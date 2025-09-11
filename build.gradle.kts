@@ -23,10 +23,10 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.logback.classic)
-    implementation("io.ktor:ktor-server-html-builder:3.2.3")
-    implementation("io.ktor:ktor-server-sessions:3.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.3")
-    implementation("io.ktor:ktor-server-status-pages:3.2.3")
+    implementation("io.ktor:ktor-server-html-builder:3.3.0")
+    implementation("io.ktor:ktor-server-sessions:3.3.0")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.3.0")
+    implementation("io.ktor:ktor-server-status-pages:3.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
     
     // JavaMail for SMTP email
@@ -51,9 +51,9 @@ dependencies {
     implementation("com.nulab-inc:zxcvbn:1.9.0")
     
     // HTTP client for Slack notifications
-    implementation("io.ktor:ktor-client-core:3.2.3")
-    implementation("io.ktor:ktor-client-cio:3.2.3")
-    implementation("io.ktor:ktor-client-content-negotiation:3.2.3")
+    implementation("io.ktor:ktor-client-core:3.3.0")
+    implementation("io.ktor:ktor-client-cio:3.3.0")
+    implementation("io.ktor:ktor-client-content-negotiation:3.3.0")
     
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
