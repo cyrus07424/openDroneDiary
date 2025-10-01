@@ -2,7 +2,7 @@
 [versions]
 kotlin-version = "2.2.20"
 ktor-version = "3.2.3"
-logback-version = "1.5.18"
+logback-version = "1.5.19"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor-version" }
