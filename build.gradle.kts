@@ -2,7 +2,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.10"
 }
 
 group = "com.example"
