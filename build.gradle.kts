@@ -42,7 +42,7 @@ dependencies {
     implementation("com.zaxxer:HikariCP:7.0.2")
     
     // H2 database for local development/testing
-    implementation("com.h2database:h2:2.3.232")
+    implementation("com.h2database:h2:2.4.240")
     
     // bcrypt for password hashing
     implementation("org.mindrot:jbcrypt:0.4")
