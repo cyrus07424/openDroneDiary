@@ -9,7 +9,7 @@ class EmailService {
     private val smtpPort = System.getenv("SMTP_PORT") ?: "587"
     private val smtpUsername = System.getenv("SMTP_USERNAME")
     private val smtpPassword = System.getenv("SMTP_PASSWORD")
-    private val fromEmail = System.getenv("SMTP_FROM_EMAIL") ?: "noreply@opendronediary.com"
+    private val fromEmail = System.getenv("SMTP_FROM_EMAIL") ?: "noreply@open-drone-diary.com"
     private val fromName = System.getenv("SMTP_FROM_NAME") ?: "OpenDroneDiary"
     private val smtpUseTLS = System.getenv("SMTP_USE_TLS")?.toBoolean() ?: true
     private val smtpUseSSL = System.getenv("SMTP_USE_SSL")?.toBoolean() ?: false

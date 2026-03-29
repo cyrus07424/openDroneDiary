@@ -15,11 +15,11 @@ OpenDroneDiary uses generic SMTP connection for sending emails. Configure the fo
 ### Optional Environment Variables
 
 - `SMTP_PORT` - SMTP server port (default: 587)
-- `SMTP_FROM_EMAIL` - From email address (default: noreply@opendronediary.com)
+- `SMTP_FROM_EMAIL` - From email address (default: noreply@open-drone-diary.com)
 - `SMTP_FROM_NAME` - From display name (default: OpenDroneDiary)
 - `SMTP_USE_TLS` - Enable STARTTLS (default: true)
 - `SMTP_USE_SSL` - Enable SSL/TLS (default: false)
-- `BASE_URL` - Base URL for email links (default: https://opendronediary.herokuapp.com)
+- `BASE_URL` - Base URL for email links (default: https://open-drone-diary.com)
 
 ## Example Configuration
 
