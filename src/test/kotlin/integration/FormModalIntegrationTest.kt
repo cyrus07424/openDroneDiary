@@ -52,6 +52,9 @@ class FormModalIntegrationTest {
             // Check that modal dialog is present
             assertTrue(content.contains("id=\"loadingModal\""), "Modal dialog should be present")
             assertTrue(content.contains("処理中です..."), "Default processing message should be present")
+            assertTrue(content.contains("name=\"captchaChallengeId\""), "Captcha challenge id field should be present")
+            assertTrue(content.contains("name=\"captchaAnswer\""), "Captcha answer field should be present")
+            assertTrue(content.contains("/register/captcha/"), "Captcha image should be present")
         }
     }
 }
