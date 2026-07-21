@@ -27,8 +27,27 @@ class UserService(private val repository: UserRepository) {
         }
         
         val passwordHash = hashPassword(password)
-        val user = repository.add(User(0, username, passwordHash, email))
-        return RegisterResult.Success(user)
+        val token = generateSecureToken()
+        val expiresAt = LocalDateTime.now().plusHours(24)
+        repository.createRegistrationToken(username, passwordHash, email, token, expiresAt)
+        return RegisterResult.PendingVerification(email, token)
+    }
+
+    fun confirmRegistration(token: String): ConfirmRegistrationResult {
+        val pending = repository.findValidRegistrationToken(token)
+            ?: return ConfirmRegistrationResult.InvalidToken
+
+        // Double-check uniqueness at confirmation time
+        if (repository.findByUsername(pending.username) != null) {
+            return ConfirmRegistrationResult.Failure("ユーザー名が既に使用されています")
+        }
+        if (repository.findByEmail(pending.email) != null) {
+            return ConfirmRegistrationResult.Failure("メールアドレスが既に使用されています")
+        }
+
+        val user = repository.add(User(0, pending.username, pending.passwordHash, pending.email))
+        repository.markRegistrationTokenAsUsed(token)
+        return ConfirmRegistrationResult.Success(user)
     }
     
     fun login(username: String, password: String): User? {
@@ -110,9 +129,15 @@ class UserService(private val repository: UserRepository) {
  * Result classes for user operations
  */
 sealed class RegisterResult {
-    data class Success(val user: User) : RegisterResult()
+    data class PendingVerification(val email: String, val token: String) : RegisterResult()
     data class Failure(val message: String) : RegisterResult()
     data class WeakPassword(val validation: PasswordValidationResult) : RegisterResult()
+}
+
+sealed class ConfirmRegistrationResult {
+    data class Success(val user: User) : ConfirmRegistrationResult()
+    object InvalidToken : ConfirmRegistrationResult()
+    data class Failure(val message: String) : ConfirmRegistrationResult()
 }
 
 sealed class ResetPasswordResult {

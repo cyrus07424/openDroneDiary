@@ -9,6 +9,7 @@ import io.ktor.http.*
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.UserService
 import com.opendronediary.service.RegisterResult
+import com.opendronediary.service.ConfirmRegistrationResult
 import com.opendronediary.service.ResetPasswordResult
 import com.opendronediary.service.EmailService
 import com.opendronediary.service.SlackService
@@ -600,29 +601,51 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
         
         val result = userService.register(username, password, email)
         when (result) {
-            is RegisterResult.Success -> {
-                val user = result.user
-                // Send welcome email
-                emailService.sendWelcomeEmail(email, username)
+            is RegisterResult.PendingVerification -> {
+                // Send verification email
+                emailService.sendRegistrationVerificationEmail(email, username, result.token)
                 
-                // Send Slack notification for new user registration
+                // Send Slack notification for provisional registration
                 try {
                     val userAgent = RequestContextHelper.extractUserAgent(call)
                     val ipAddress = RequestContextHelper.extractIpAddress(call)
                     slackService.sendNotification(
-                        action = "新規ユーザー登録",
-                        username = user.username,
+                        action = "仮登録",
+                        username = username,
                         userAgent = userAgent,
                         ipAddress = ipAddress,
                         additionalInfo = "メールアドレス: $email"
                     )
                 } catch (e: Exception) {
                     // Log error but don't fail the registration process
-                    call.application.log.error("Failed to send Slack notification for registration", e)
+                    call.application.log.error("Failed to send Slack notification for provisional registration", e)
                 }
                 
-                call.sessions.set(UserSession(user.id, user.username))
-                call.respondRedirect("/")
+                call.respondHtml {
+                    head { bootstrapHead("確認メール送信完了") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"確認メール送信完了" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-success") {
+                                                +"確認メールを ${result.email} に送信しました。メール内のリンクをクリックして登録を完了してください。"
+                                            }
+                                            p { +"メールが届かない場合は、迷惑メールフォルダを確認してください。" }
+                                            a(href = "/login", classes = "btn btn-primary") { +"ログイン画面へ" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        addFooter()
+                    }
+                }
             }
             is RegisterResult.Failure -> {
                 call.respondHtml(HttpStatusCode.Conflict) {
@@ -675,6 +698,94 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                                 }
                                             }
                                             a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        addFooter()
+                    }
+                }
+            }
+        }
+    }
+    
+    get("/verify-email") {
+        val token = call.request.queryParameters["token"] ?: ""
+        
+        if (token.isBlank()) {
+            call.respondRedirect("/register")
+            return@get
+        }
+        
+        val result = userService.confirmRegistration(token)
+        when (result) {
+            is ConfirmRegistrationResult.Success -> {
+                val user = result.user
+                // Send welcome email
+                emailService.sendWelcomeEmail(user.email, user.username)
+                
+                // Send Slack notification for completed registration
+                try {
+                    val userAgent = RequestContextHelper.extractUserAgent(call)
+                    val ipAddress = RequestContextHelper.extractIpAddress(call)
+                    slackService.sendNotification(
+                        action = "新規ユーザー登録完了",
+                        username = user.username,
+                        userAgent = userAgent,
+                        ipAddress = ipAddress,
+                        additionalInfo = "メールアドレス: ${user.email}"
+                    )
+                } catch (e: Exception) {
+                    call.application.log.error("Failed to send Slack notification for registration completion", e)
+                }
+                
+                call.sessions.set(UserSession(user.id, user.username))
+                call.respondRedirect("/")
+            }
+            is ConfirmRegistrationResult.InvalidToken -> {
+                call.respondHtml(HttpStatusCode.BadRequest) {
+                    head { bootstrapHead("認証エラー") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"認証エラー" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-danger") {
+                                                +"確認リンクが無効または期限切れです。再度ユーザー登録を行ってください。"
+                                            }
+                                            a(href = "/register", classes = "btn btn-primary") { +"ユーザー登録へ" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        addFooter()
+                    }
+                }
+            }
+            is ConfirmRegistrationResult.Failure -> {
+                call.respondHtml(HttpStatusCode.Conflict) {
+                    head { bootstrapHead("登録エラー") }
+                    body(classes = "d-flex flex-column min-vh-100") {
+                        addGTMBodyScript()
+                        div(classes = "container mt-5") {
+                            div(classes = "row justify-content-center") {
+                                div(classes = "col-md-6") {
+                                    div(classes = "card") {
+                                        div(classes = "card-header") {
+                                            h1(classes = "card-title mb-0") { +"登録エラー" }
+                                        }
+                                        div(classes = "card-body") {
+                                            div(classes = "alert alert-danger") {
+                                                +result.message
+                                            }
+                                            a(href = "/register", classes = "btn btn-primary") { +"ユーザー登録へ" }
                                         }
                                     }
                                 }

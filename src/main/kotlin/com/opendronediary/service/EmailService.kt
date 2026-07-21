@@ -81,6 +81,31 @@ class EmailService {
         
         return sendHtmlEmail(toEmail, subject, htmlContent)
     }
+
+    fun sendRegistrationVerificationEmail(toEmail: String, username: String, token: String): Boolean {
+        val subject = "メールアドレスの確認 - OpenDroneDiary"
+        val verifyUrl = "${baseUrl}/verify-email?token=${token}"
+        
+        val htmlContent = """
+        <html>
+        <body>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #0d6efd;">🛩️ OpenDroneDiary 🚁</h1>
+                <h2>メールアドレスの確認</h2>
+                <p>こんにちは、${username}さん</p>
+                <p>OpenDroneDiary にご登録いただき、ありがとうございます。</p>
+                <p>以下のリンクをクリックして、メールアドレスを確認し、登録を完了してください。</p>
+                <p><a href="${verifyUrl}" style="background-color: #198754; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">メールアドレスを確認して登録を完了する</a></p>
+                <p>このリンクは24時間有効です。</p>
+                <p>このメールに心当たりがない場合は、無視してください。</p>
+                <p>OpenDroneDiary チーム</p>
+            </div>
+        </body>
+        </html>
+        """.trimIndent()
+        
+        return sendHtmlEmail(toEmail, subject, htmlContent)
+    }
     
     fun sendPasswordResetEmail(toEmail: String, token: String): Boolean {
         val subject = "パスワードのリセット - OpenDroneDiary"
