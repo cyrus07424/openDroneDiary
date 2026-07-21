@@ -14,6 +14,7 @@ import com.opendronediary.service.UserService
 import com.opendronediary.service.PilotService
 import com.opendronediary.service.EmailService
 import com.opendronediary.service.SlackService
+import com.opendronediary.service.CaptchaService
 import routing.configureTopAndAuthRouting
 import routing.configureFlightLogRouting
 import routing.configureDailyInspectionRouting
@@ -33,9 +34,10 @@ fun Application.configureRouting() {
     val pilotService = PilotService(pilotRepository)
     val emailService = EmailService()
     val slackService = SlackService()
+    val captchaService = CaptchaService()
     
     routing {
-        configureTopAndAuthRouting(userService, emailService, slackService)
+        configureTopAndAuthRouting(userService, emailService, slackService, captchaService)
         configureFlightLogRouting(flightLogService, slackService, pilotService)
         configureDailyInspectionRouting(dailyInspectionRecordService, slackService)
         configureMaintenanceInspectionRouting(maintenanceInspectionRecordService, slackService)

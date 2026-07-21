@@ -49,6 +49,9 @@ dependencies {
     
     // zxcvbn for password strength validation
     implementation("com.nulab-inc:zxcvbn:1.9.0")
+
+    // CAPTCHA for self-hosted spam prevention
+    implementation("com.github.cage:cage:1.0")
     
     // HTTP client for Slack notifications
     implementation("io.ktor:ktor-client-core:3.5.1")

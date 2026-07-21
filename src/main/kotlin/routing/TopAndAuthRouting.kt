@@ -13,6 +13,7 @@ import com.opendronediary.service.ConfirmRegistrationResult
 import com.opendronediary.service.ResetPasswordResult
 import com.opendronediary.service.EmailService
 import com.opendronediary.service.SlackService
+import com.opendronediary.service.CaptchaService
 import io.ktor.server.html.respondHtml
 import kotlinx.html.*
 import utils.GTMHelper.addGTMHeadScript
@@ -294,7 +295,12 @@ fun HEAD.bootstrapHead(pageTitle: String, includeSEO: Boolean = false) {
     addGTMHeadScript()
 }
 
-fun Route.configureTopAndAuthRouting(userService: UserService, emailService: EmailService, slackService: SlackService) {
+fun Route.configureTopAndAuthRouting(
+    userService: UserService,
+    emailService: EmailService,
+    slackService: SlackService,
+    captchaService: CaptchaService
+) {
     get("/") {
         val session = call.sessions.get<UserSession>()
         call.respondHtml {
@@ -441,6 +447,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
     }
     
     get("/register") {
+        val captchaChallenge = captchaService.createChallenge()
         call.respondHtml {
             head { bootstrapHead("ユーザー登録", includeSEO = true) }
             body(classes = "d-flex flex-column min-vh-100") {
@@ -454,6 +461,10 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                 }
                                 div(classes = "card-body") {
                                     form(action = "/register", method = FormMethod.post) {
+                                        hiddenInput {
+                                            name = "captchaChallengeId"
+                                            value = captchaChallenge.id
+                                        }
                                         div(classes = "mb-3") {
                                             label(classes = "form-label") { +"ユーザー名" }
                                             textInput(classes = "form-control") { 
@@ -495,7 +506,31 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                                 }
                                             }
                                         }
-                                        
+
+                                        div(classes = "mb-3") {
+                                            label(classes = "form-label") { +"画像認証" }
+                                            div(classes = "mb-2") {
+                                                img(
+                                                    src = "/register/captcha/${captchaChallenge.id}",
+                                                    alt = "CAPTCHA画像",
+                                                    classes = "img-fluid border rounded"
+                                                ) {
+                                                    attributes["style"] = "max-width: 220px;"
+                                                }
+                                            }
+                                            textInput(classes = "form-control") {
+                                                name = "captchaAnswer"
+                                                placeholder = "画像に表示された文字を入力してください"
+                                                required = true
+                                                attributes["autocomplete"] = "off"
+                                                attributes["autocapitalize"] = "off"
+                                                attributes["spellcheck"] = "false"
+                                            }
+                                            div(classes = "form-text") {
+                                                +"画像が読みにくい場合はページを再読み込みしてください。"
+                                            }
+                                        }
+                                         
                                         // Terms of Service checkbox - only show if URL is configured
                                         if (isTermsOfServiceEnabled()) {
                                             div(classes = "mb-3") {
@@ -540,6 +575,8 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
         val username = params["username"] ?: ""
         val password = params["password"] ?: ""
         val email = params["email"] ?: ""
+        val captchaChallengeId = params["captchaChallengeId"] ?: ""
+        val captchaAnswer = params["captchaAnswer"] ?: ""
         val agreeToTerms = params["agreeToTerms"] ?: ""
         
         if (username.isBlank() || password.isBlank() || email.isBlank()) {
@@ -569,7 +606,35 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
             }
             return@post
         }
-        
+
+        if (!captchaService.verifyChallenge(captchaChallengeId, captchaAnswer)) {
+            call.respondHtml(HttpStatusCode.BadRequest) {
+                head { bootstrapHead("登録エラー") }
+                body(classes = "d-flex flex-column min-vh-100") {
+                    addGTMBodyScript()
+                    div(classes = "container mt-5") {
+                        div(classes = "row justify-content-center") {
+                            div(classes = "col-md-6") {
+                                div(classes = "card") {
+                                    div(classes = "card-header") {
+                                        h1(classes = "card-title mb-0") { +"画像認証エラー" }
+                                    }
+                                    div(classes = "card-body") {
+                                        div(classes = "alert alert-danger") {
+                                            +"画像認証に失敗しました。再度お試しください。"
+                                        }
+                                        a(href = "/register", classes = "btn btn-primary") { +"戻る" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addFooter()
+                }
+            }
+            return@post
+        }
+         
         // Check terms of service agreement if enabled
         if (isTermsOfServiceEnabled() && agreeToTerms.isBlank()) {
             call.respondHtml(HttpStatusCode.BadRequest) {
@@ -590,6 +655,7 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                                         a(href = "/register", classes = "btn btn-primary") { +"戻る" }
                                     }
                                 }
+
                             }
                         }
                     }
@@ -708,6 +774,15 @@ fun Route.configureTopAndAuthRouting(userService: UserService, emailService: Ema
                 }
             }
         }
+    }
+
+    get("/register/captcha/{challengeId}") {
+        val challengeId = call.parameters["challengeId"] ?: ""
+        val imageBytes = captchaService.renderChallenge(challengeId)
+            ?: return@get call.respond(HttpStatusCode.NotFound)
+
+        call.response.header(HttpHeaders.CacheControl, "no-store, no-cache, must-revalidate")
+        call.respondBytes(imageBytes, ContentType.Image.PNG)
     }
     
     get("/verify-email") {
