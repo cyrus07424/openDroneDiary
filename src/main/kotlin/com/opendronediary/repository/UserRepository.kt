@@ -3,6 +3,7 @@ package com.opendronediary.repository
 import com.opendronediary.model.User
 import com.opendronediary.database.Users
 import com.opendronediary.database.PasswordResetTokens
+import com.opendronediary.database.UserRegistrationTokens
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -72,6 +73,52 @@ class UserRepository {
     
     fun markPasswordResetTokenAsUsed(token: String): Boolean = transaction {
         PasswordResetTokens.update({ PasswordResetTokens.token eq token }) {
+            it[used] = true
+            it[updatedAt] = LocalDateTime.now()
+        } > 0
+    }
+
+    // Registration token methods
+    fun createRegistrationToken(
+        username: String,
+        passwordHash: String,
+        email: String,
+        token: String,
+        expiresAt: LocalDateTime
+    ): Boolean = transaction {
+        val now = LocalDateTime.now()
+        UserRegistrationTokens.insert {
+            it[UserRegistrationTokens.username] = username
+            it[UserRegistrationTokens.passwordHash] = passwordHash
+            it[UserRegistrationTokens.email] = email
+            it[UserRegistrationTokens.token] = token
+            it[UserRegistrationTokens.expiresAt] = expiresAt
+            it[createdAt] = now
+            it[updatedAt] = now
+        }
+        true
+    }
+
+    data class PendingRegistrationData(val username: String, val passwordHash: String, val email: String)
+
+    fun findValidRegistrationToken(token: String): PendingRegistrationData? = transaction {
+        UserRegistrationTokens.select {
+            (UserRegistrationTokens.token eq token) and
+            (UserRegistrationTokens.used eq false) and
+            (UserRegistrationTokens.expiresAt greater LocalDateTime.now())
+        }
+            .map {
+                PendingRegistrationData(
+                    it[UserRegistrationTokens.username],
+                    it[UserRegistrationTokens.passwordHash],
+                    it[UserRegistrationTokens.email]
+                )
+            }
+            .singleOrNull()
+    }
+
+    fun markRegistrationTokenAsUsed(token: String): Boolean = transaction {
+        UserRegistrationTokens.update({ UserRegistrationTokens.token eq token }) {
             it[used] = true
             it[updatedAt] = LocalDateTime.now()
         } > 0

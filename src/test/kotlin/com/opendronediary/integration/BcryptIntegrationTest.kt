@@ -3,6 +3,7 @@ package com.opendronediary.integration
 import com.opendronediary.database.DatabaseConfig
 import com.opendronediary.service.UserService
 import com.opendronediary.service.RegisterResult
+import com.opendronediary.service.ConfirmRegistrationResult
 import com.opendronediary.service.ResetPasswordResult
 import com.opendronediary.repository.UserRepository
 import org.mindrot.jbcrypt.BCrypt
@@ -23,8 +24,13 @@ class BcryptIntegrationTest {
         
         // Register user - this should use bcrypt and strong password validation
         val result = userService.register(uniqueUsername, strongPassword, uniqueEmail)
-        assertTrue(result is RegisterResult.Success, "User registration should succeed with strong password")
-        val user = (result as RegisterResult.Success).user
+        assertTrue(result is RegisterResult.PendingVerification, "User registration should return PendingVerification with strong password")
+        val pending = result as RegisterResult.PendingVerification
+        
+        // Confirm registration
+        val confirmResult = userService.confirmRegistration(pending.token)
+        assertTrue(confirmResult is ConfirmRegistrationResult.Success, "Confirm registration should succeed")
+        val user = (confirmResult as ConfirmRegistrationResult.Success).user
         
         // Verify the password hash is actually bcrypt formatted
         assertTrue(user.passwordHash.startsWith("$2"), "Password should be bcrypt hashed, got: ${user.passwordHash}")
@@ -57,10 +63,15 @@ class BcryptIntegrationTest {
         val uniqueUsername = "resettest_${System.currentTimeMillis()}"
         val uniqueEmail = "resettest_${System.currentTimeMillis()}@example.com"
         
-        // Register user with strong password
+        // Register user with strong password (pending verification)
         val registerResult = userService.register(uniqueUsername, originalStrongPassword, uniqueEmail)
-        assertTrue(registerResult is RegisterResult.Success, "User registration should succeed with strong password")
-        val user = (registerResult as RegisterResult.Success).user
+        assertTrue(registerResult is RegisterResult.PendingVerification, "User registration should return PendingVerification with strong password")
+        val pending = registerResult as RegisterResult.PendingVerification
+        
+        // Confirm registration
+        val confirmResult = userService.confirmRegistration(pending.token)
+        assertTrue(confirmResult is ConfirmRegistrationResult.Success, "Confirm registration should succeed")
+        val user = (confirmResult as ConfirmRegistrationResult.Success).user
         
         val originalHash = user.passwordHash
         assertTrue(originalHash.startsWith("$2"), "Original password should be bcrypt hashed")

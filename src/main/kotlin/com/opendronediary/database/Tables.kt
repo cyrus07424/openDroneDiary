@@ -95,3 +95,17 @@ object PasswordResetTokens : Table() {
     
     override val primaryKey = PrimaryKey(id)
 }
+
+object UserRegistrationTokens : Table() {
+    val id = integer("id").autoIncrement()
+    val username = varchar("username", 50)
+    val passwordHash = varchar("password_hash", 255)
+    val email = varchar("email", 255)
+    val token = varchar("token", 255).uniqueIndex()
+    val expiresAt = datetime("expires_at")
+    val used = bool("used").default(false)
+    val createdAt = datetime("created_at").default(LocalDateTime.now())
+    val updatedAt = datetime("updated_at").default(LocalDateTime.now())
+    
+    override val primaryKey = PrimaryKey(id)
+}

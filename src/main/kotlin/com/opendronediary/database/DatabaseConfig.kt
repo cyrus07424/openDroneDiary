@@ -52,7 +52,8 @@ object DatabaseConfig {
                 FlightLogs,
                 DailyInspectionRecords,
                 MaintenanceInspectionRecords,
-                PasswordResetTokens
+                PasswordResetTokens,
+                UserRegistrationTokens
             )
         }
     }
