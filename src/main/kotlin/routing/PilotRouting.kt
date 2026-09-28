@@ -58,7 +58,8 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                 val created = pilotService.add(Pilot(
                     id = 0,
                     name = name,
-                    userId = session.userId
+                    userId = session.userId,
+                    skillCertificateNumber = params["skillCertificateNumber"].blankToNull()
                 ))
                 call.respondRedirect("/pilots/ui")
             } else {
@@ -141,6 +142,7 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                                                         tr {
                                                             th { +"ID" }
                                                             th { +"パイロット氏名" }
+                                                            th { +"技能証明番号" }
                                                             th { +"登録日時" }
                                                             th(classes = "text-center") { +"操作" }
                                                         }
@@ -152,6 +154,7 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                                                                 td { 
                                                                     strong { +pilot.name }
                                                                 }
+                                                                td { +(pilot.skillCertificateNumber ?: "—") }
                                                                 td { 
                                                                     pilot.createdAt?.let { 
                                                                         +it.toString().substring(0, 19).replace("T", " ")
@@ -183,13 +186,21 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                                     div(classes = "card-body") {
                                         form(action = "/pilots/ui", method = FormMethod.post) {
                                             div(classes = "row") {
-                                                div(classes = "col-md-8 mb-3") {
+                                                div(classes = "col-md-4 mb-3") {
                                                     label(classes = "form-label") { +"パイロット氏名" }
                                                     textInput(classes = "form-control") { 
                                                         name = "name"
                                                         placeholder = "パイロットの氏名を入力してください"
                                                         required = true
                                                         maxLength = "100"
+                                                    }
+                                                }
+                                                div(classes = "col-md-4 mb-3") {
+                                                    label(classes = "form-label") { +"技能証明番号（任意）" }
+                                                    textInput(classes = "form-control") {
+                                                        name = "skillCertificateNumber"
+                                                        placeholder = "無人航空機操縦者技能証明書番号"
+                                                        maxLength = "50"
                                                     }
                                                 }
                                                 div(classes = "col-md-4 mb-3 d-flex align-items-end") {
@@ -253,6 +264,14 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                                                     maxLength = "100"
                                                 }
                                             }
+                                            div(classes = "mb-3") {
+                                                label(classes = "form-label") { +"技能証明番号（任意）" }
+                                                textInput(classes = "form-control") {
+                                                    name = "skillCertificateNumber"
+                                                    value = pilot.skillCertificateNumber ?: ""
+                                                    maxLength = "50"
+                                                }
+                                            }
                                             div(classes = "d-grid gap-2 d-md-block") {
                                                 submitInput(classes = "btn btn-primary") { value = "更新" }
                                             }
@@ -297,7 +316,8 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                         val updated = pilotService.update(id, Pilot(
                             id = id,
                             name = name,
-                            userId = session.userId
+                            userId = session.userId,
+                            skillCertificateNumber = params["skillCertificateNumber"].blankToNull()
                         ), session.userId)
                         if (updated) {
                             call.respondRedirect("/pilots/ui")
@@ -339,7 +359,8 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                 val created = pilotService.add(Pilot(
                     id = 0,
                     name = name,
-                    userId = session.userId
+                    userId = session.userId,
+                    skillCertificateNumber = params["skillCertificateNumber"].blankToNull()
                 ))
                 call.respondRedirect("/pilots/ui")
             } else {

@@ -16,7 +16,12 @@ import utils.RequestContextHelper
 import routing.bootstrapHead
 import routing.addFormSubmissionModal
 
-fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordService: MaintenanceInspectionRecordService, slackService: SlackService) {
+fun Route.configureMaintenanceInspectionRouting(
+    maintenanceInspectionRecordService: MaintenanceInspectionRecordService,
+    slackService: SlackService,
+    aircraftService: com.opendronediary.service.AircraftService,
+    flightLogService: com.opendronediary.service.FlightLogService
+) {
     // Maintenance Inspection Record UI routes
     route("/maintenanceinspections/ui") {
         get {
@@ -26,6 +31,8 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                 return@get
             }
             val maintenanceInspectionRecords = maintenanceInspectionRecordService.getAllByUserId(session.userId)
+            val aircraft = aircraftService.getAllByUserId(session.userId)
+            val aircraftById = aircraft.associateBy { it.id }
             call.respondHtml {
                 head { bootstrapHead("点検整備記録一覧") }
                 body {
@@ -50,6 +57,8 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                                                             th { +"点検日" }
                                                             th { +"場所" }
                                                             th { +"実施者" }
+                                                            th { +"機体" }
+                                                            th { +"総飛行時間" }
                                                             th { +"内容・理由" }
                                                             th(classes = "text-center") { +"操作" }
                                                         }
@@ -61,6 +70,8 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                                                                 td { +record.inspectionDate }
                                                                 td { +record.location }
                                                                 td { +record.inspectorName }
+                                                                td { +(record.aircraftId?.let { aircraftById[it]?.registrationSymbol } ?: "—") }
+                                                                td { +(record.totalFlightTime ?: "—") }
                                                                 td { +record.contentAndReason }
                                                                 td(classes = "text-center") {
                                                                     a(href = "/maintenanceinspections/ui/${record.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
@@ -123,6 +134,14 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                                                     }
                                                 }
                                             }
+                                            aircraftSelectField(aircraft, null)
+                                            div(classes = "mb-3") {
+                                                label(classes = "form-label") { +"実施時点の製造後総飛行時間" }
+                                                textInput(classes = "form-control") {
+                                                    name = "totalFlightTime"
+                                                    placeholder = "空欄なら、選んだ機体の現在の総飛行時間を入れます"
+                                                }
+                                            }
                                             div(classes = "d-grid") {
                                                 submitInput(classes = "btn btn-success") { value = "点検整備記録を追加" }
                                             }
@@ -144,6 +163,7 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
             }
             val id = call.parameters["id"]?.toIntOrNull()
             val record = id?.let { maintenanceInspectionRecordService.getByIdAndUserId(it, session.userId) }
+            val aircraft = aircraftService.getAllByUserId(session.userId)
             if (record == null) {
                 call.respond(HttpStatusCode.NotFound)
                 return@get
@@ -201,6 +221,14 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                                                     }
                                                 }
                                             }
+                                            aircraftSelectField(aircraft, record.aircraftId)
+                                            div(classes = "mb-3") {
+                                                label(classes = "form-label") { +"実施時点の製造後総飛行時間" }
+                                                textInput(classes = "form-control") {
+                                                    name = "totalFlightTime"
+                                                    value = record.totalFlightTime ?: ""
+                                                }
+                                            }
                                             div(classes = "d-grid gap-2 d-md-block") {
                                                 submitInput(classes = "btn btn-primary") { value = "更新" }
                                             }
@@ -231,17 +259,17 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                 return@post
             }
             val id = call.parameters["id"]?.toIntOrNull()
-            val method = call.receiveParameters()["_method"]
+            val params = call.receiveParameters()
+            val method = params["_method"]
             when (method) {
                 "put" -> {
-                    val params = call.receiveParameters()
                     val inspectionDate = params["inspectionDate"] ?: ""
                     val location = params["location"] ?: ""
                     val inspectorName = params["inspectorName"] ?: ""
                     val contentAndReason = params["contentAndReason"] ?: ""
                     if (id != null && inspectionDate.isNotBlank() && location.isNotBlank() && 
                         inspectorName.isNotBlank() && contentAndReason.isNotBlank()) {
-                        val updated = maintenanceInspectionRecordService.update(id, MaintenanceInspectionRecord(id, inspectionDate, location, inspectorName, contentAndReason, session.userId), session.userId)
+                        val updated = maintenanceInspectionRecordService.update(id, params.toMaintenanceRecord(id, session.userId, aircraftService, flightLogService), session.userId)
                         if (updated) {
                             call.respondRedirect("/maintenanceinspections/ui")
                         } else {
@@ -275,7 +303,7 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                 val location = params["location"] ?: ""
                 val inspectorName = params["inspectorName"] ?: ""
                 val contentAndReason = params["contentAndReason"] ?: ""
-                val created = maintenanceInspectionRecordService.add(MaintenanceInspectionRecord(0, inspectionDate, location, inspectorName, contentAndReason, session.userId))
+                val created = maintenanceInspectionRecordService.add(params.toMaintenanceRecord(0, session.userId, aircraftService, flightLogService))
                 
                 // Send Slack notification for maintenance inspection creation
                 try {
@@ -352,7 +380,7 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
                 val location = params["location"] ?: ""
                 val inspectorName = params["inspectorName"] ?: ""
                 val contentAndReason = params["contentAndReason"] ?: ""
-                val created = maintenanceInspectionRecordService.add(MaintenanceInspectionRecord(0, inspectionDate, location, inspectorName, contentAndReason, session.userId))
+                val created = maintenanceInspectionRecordService.add(params.toMaintenanceRecord(0, session.userId, aircraftService, flightLogService))
                 call.respondRedirect("/maintenanceinspections/ui")
             } else {
                 val record = call.receive<MaintenanceInspectionRecord>()
@@ -388,4 +416,32 @@ fun Route.configureMaintenanceInspectionRouting(maintenanceInspectionRecordServi
             }
         }
     }
+}
+
+private fun io.ktor.http.Parameters.toMaintenanceRecord(
+    id: Int,
+    userId: Int,
+    aircraftService: com.opendronediary.service.AircraftService,
+    flightLogService: com.opendronediary.service.FlightLogService
+): com.opendronediary.model.MaintenanceInspectionRecord {
+    val aircraftId = this["aircraftId"]?.toIntOrNull()
+    var totalFlightTime = this["totalFlightTime"].blankToNull()
+    if (totalFlightTime == null && aircraftId != null) {
+        val aircraft = aircraftService.getByIdAndUserId(aircraftId, userId)
+        if (aircraft != null) {
+            val logs = flightLogService.getAllByUserId(userId).filter { it.aircraftId == aircraftId }
+            val minutes = utils.FlightHours.liveTotalMinutes(aircraft.initialTotalMinutes, logs)
+            totalFlightTime = utils.FlightTimeCalculator.formatMinutes(minutes)
+        }
+    }
+    return com.opendronediary.model.MaintenanceInspectionRecord(
+        id = id,
+        inspectionDate = this["inspectionDate"] ?: "",
+        location = this["location"] ?: "",
+        inspectorName = this["inspectorName"] ?: "",
+        contentAndReason = this["contentAndReason"] ?: "",
+        userId = userId,
+        aircraftId = aircraftId,
+        totalFlightTime = totalFlightTime
+    )
 }

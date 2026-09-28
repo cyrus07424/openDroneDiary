@@ -1,10 +1,16 @@
 package com.opendronediary.service
 
 import com.opendronediary.model.FlightLog
+import com.opendronediary.repository.AircraftRepository
 import com.opendronediary.repository.FlightLogRepository
+import org.jetbrains.exposed.sql.transactions.transaction
+import utils.FlightHours
 import utils.FlightTimeCalculator
 
-class FlightLogService(private val repository: FlightLogRepository) {
+class FlightLogService(
+    private val repository: FlightLogRepository,
+    private val aircraftRepository: AircraftRepository? = null
+) {
     fun getAllByUserId(userId: Int): List<FlightLog> = repository.getAllByUserId(userId)
     fun getByIdAndUserId(id: Int, userId: Int): FlightLog? = repository.getByIdAndUserId(id, userId)
     
@@ -33,7 +39,27 @@ class FlightLogService(private val repository: FlightLogRepository) {
             else -> flightLog.totalFlightTime // Keep original (which may be null)
         }
         
-        return flightLog.copy(totalFlightTime = finalTotalFlightTime)
+        val withDuration = flightLog.copy(totalFlightTime = finalTotalFlightTime)
+        val cumulative = cumulativeMinutes(withDuration)
+        return if (cumulative == null) withDuration else withDuration.copy(cumulativeFlightMinutes = cumulative)
+    }
+
+    private fun cumulativeMinutes(flightLog: FlightLog): Int? {
+        val aircraftId = flightLog.aircraftId ?: return null
+        val aircraftRepo = aircraftRepository ?: return null
+        return transaction {
+            val aircraft = aircraftRepo.getByIdAndUserId(aircraftId, flightLog.userId) ?: return@transaction null
+            val others = repository.getAllByUserId(flightLog.userId)
+                .filter { it.aircraftId == aircraftId && it.id != flightLog.id }
+            val thisMinutes = FlightHours.flightMinutes(flightLog)
+            FlightHours.snapshotMinutes(
+                aircraft.initialTotalMinutes,
+                others,
+                thisMinutes,
+                flightLog.flightDate,
+                flightLog.id
+            )
+        }
     }
 }
 

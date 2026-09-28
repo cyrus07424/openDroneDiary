@@ -19,6 +19,8 @@ class MaintenanceInspectionRecordRepository {
                     inspectorName = it[MaintenanceInspectionRecords.inspectorName],
                     contentAndReason = it[MaintenanceInspectionRecords.contentAndReason],
                     userId = it[MaintenanceInspectionRecords.userId],
+                    aircraftId = it[MaintenanceInspectionRecords.aircraftId],
+                    totalFlightTime = it[MaintenanceInspectionRecords.totalFlightTime],
                     createdAt = it[MaintenanceInspectionRecords.createdAt],
                     updatedAt = it[MaintenanceInspectionRecords.updatedAt]
                 )
@@ -35,6 +37,8 @@ class MaintenanceInspectionRecordRepository {
                     inspectorName = it[MaintenanceInspectionRecords.inspectorName],
                     contentAndReason = it[MaintenanceInspectionRecords.contentAndReason],
                     userId = it[MaintenanceInspectionRecords.userId],
+                    aircraftId = it[MaintenanceInspectionRecords.aircraftId],
+                    totalFlightTime = it[MaintenanceInspectionRecords.totalFlightTime],
                     createdAt = it[MaintenanceInspectionRecords.createdAt],
                     updatedAt = it[MaintenanceInspectionRecords.updatedAt]
                 )
@@ -50,6 +54,8 @@ class MaintenanceInspectionRecordRepository {
             it[inspectorName] = maintenanceInspectionRecord.inspectorName
             it[contentAndReason] = maintenanceInspectionRecord.contentAndReason
             it[userId] = maintenanceInspectionRecord.userId
+            it[aircraftId] = maintenanceInspectionRecord.aircraftId
+            it[totalFlightTime] = maintenanceInspectionRecord.totalFlightTime
             it[createdAt] = now
             it[updatedAt] = now
         } get MaintenanceInspectionRecords.id
@@ -64,6 +70,8 @@ class MaintenanceInspectionRecordRepository {
             it[location] = maintenanceInspectionRecord.location
             it[inspectorName] = maintenanceInspectionRecord.inspectorName
             it[contentAndReason] = maintenanceInspectionRecord.contentAndReason
+            it[aircraftId] = maintenanceInspectionRecord.aircraftId
+            it[totalFlightTime] = maintenanceInspectionRecord.totalFlightTime
             it[updatedAt] = LocalDateTime.now()
         }
         updateCount > 0

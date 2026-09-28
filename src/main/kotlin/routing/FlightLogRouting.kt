@@ -7,6 +7,7 @@ import io.ktor.server.sessions.*
 import io.ktor.http.*
 import com.opendronediary.model.FlightLog
 import com.opendronediary.model.UserSession
+import com.opendronediary.service.AircraftService
 import com.opendronediary.service.FlightLogService
 import com.opendronediary.service.PilotService
 import com.opendronediary.service.SlackService
@@ -19,9 +20,26 @@ import routing.bootstrapHead
 import routing.addFormSubmissionModal
 import java.math.BigDecimal
 
-fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackService: SlackService, pilotService: PilotService) {
+fun Route.configureFlightLogRouting(
+    flightLogService: FlightLogService,
+    slackService: SlackService,
+    pilotService: PilotService,
+    aircraftService: AircraftService
+) {
     // 飛行記録 CRUD - Authentication required
     route("/flightlogs") {
+        get("/export.csv") {
+            val session = call.sessions.get<UserSession>()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized)
+                return@get
+            }
+            val logs = flightLogService.getAllByUserId(session.userId)
+            val aircraftById = aircraftService.getAllByUserId(session.userId).associateBy { it.id }
+            val csv = utils.FlightLogCsvExporter.export(logs, aircraftById)
+            call.response.header(HttpHeaders.ContentDisposition, "attachment; filename=\"flight-records.csv\"")
+            call.respondText(csv, ContentType.Text.CSV.withCharset(Charsets.UTF_8))
+        }
         get {
             val session = call.sessions.get<UserSession>()
             if (session == null) {
@@ -122,7 +140,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffLongitude = takeoffLongitude,
                     landingLatitude = landingLatitude,
                     landingLongitude = landingLongitude
-                ))
+                ).bindFlightCompliance(params, pilotService, session.userId))
                 
                 // Send Slack notification for flight log creation
                 try {
@@ -214,6 +232,8 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
             }
             val flightLogs = flightLogService.getAllByUserId(session.userId)
             val pilots = pilotService.getAllByUserId(session.userId)
+            val aircraft = aircraftService.getAllByUserId(session.userId)
+            val aircraftById = aircraft.associateBy { it.id }
             call.respondHtml {
                 head { 
                     bootstrapHead("飛行記録一覧")
@@ -239,6 +259,9 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                     div(classes = "card-header d-flex justify-content-between align-items-center") {
                                         h1(classes = "card-title mb-0") { +"飛行記録一覧" }
                                         div {
+                                            a(href = "/dashboard", classes = "btn btn-outline-success btn-sm me-2") { +"ダッシュボード" }
+                                            a(href = "/aircraft/ui", classes = "btn btn-outline-secondary btn-sm me-2") { +"機体" }
+                                            a(href = "/flightlogs/export.csv", classes = "btn btn-outline-success btn-sm me-2") { +"CSV" }
                                             a(href = "/flightlogs/ui/heatmap", classes = "btn btn-outline-warning btn-sm me-2") { +"🗺️ ヒートマップ" }
                                             a(href = "/flightlogs/ui/calendar", classes = "btn btn-outline-info btn-sm me-2") { +"📅 カレンダー表示" }
                                             a(href = "/flightlogs/ui/timeline", classes = "btn btn-outline-info btn-sm me-2") { +"📊 タイムライン表示" }
@@ -255,6 +278,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                         tr {
                                                             th { +"ID" }
                                                             th { +"飛行日" }
+                                                            th { +"機体" }
                                                             th { +"離着陸場所" }
                                                             th { +"時刻" }
                                                             th { +"飛行時間" }
@@ -266,7 +290,15 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                         flightLogs.forEach { flightLog ->
                                                             tr {
                                                                 td { +flightLog.id.toString() }
-                                                                td { +flightLog.flightDate }
+                                                                td {
+                                                                    +flightLog.flightDate
+                                                                    val categories = utils.SpecificFlightCatalog.format(flightLog.specificFlight)
+                                                                    if (categories.isNotEmpty()) {
+                                                                        br()
+                                                                        small(classes = "text-muted") { +categories }
+                                                                    }
+                                                                }
+                                                                td { +(flightLog.aircraftId?.let { aircraftById[it]?.registrationSymbol } ?: "—") }
                                                                 td { 
                                                                     // Use new fields if available, fallback to legacy field
                                                                     if (!flightLog.takeoffLocation.isNullOrEmpty() && !flightLog.landingLocation.isNullOrEmpty()) {
@@ -312,6 +344,9 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                                 td { +flightLog.pilotName }
                                                                 td(classes = "text-center") {
                                                                     a(href = "/flightlogs/ui/${flightLog.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
+                                                                    form(action = "/flightlogs/ui/${flightLog.id}/copy", method = FormMethod.post, classes = "d-inline me-2") {
+                                                                        submitInput(classes = "btn btn-sm btn-outline-secondary") { value = "複製" }
+                                                                    }
                                                                     form(action = "/flightlogs/ui/${flightLog.id}", method = FormMethod.post, classes = "d-inline") {
                                                                         hiddenInput { name = "_method"; value = "delete" }
                                                                         submitInput(classes = "btn btn-sm btn-outline-danger") { 
@@ -420,6 +455,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                     }
                                                 }
                                             }
+                                            flightComplianceFields(aircraft, null)
                                             // Enhanced location input section
                                             div(classes = "row") {
                                                 div(classes = "col-12 mb-4") {
@@ -546,10 +582,10 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                             }
                                             div(classes = "row") {
                                                 div(classes = "col-md-6 mb-3") {
-                                                    label(classes = "form-label") { +"総飛行時間" }
+                                                    label(classes = "form-label") { +"飛行時間（当該飛行）" }
                                                     textInput(classes = "form-control") { 
                                                         name = "totalFlightTime"
-                                                        placeholder = "例: 1時間30分 (自動計算される場合もあります)"
+                                                        placeholder = "空欄なら離陸・着陸時刻から自動計算"
                                                     }
                                                 }
                                                 div(classes = "col-md-6 mb-3") {
@@ -1331,6 +1367,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 return@get
             }
             val pilots = pilotService.getAllByUserId(session.userId)
+            val aircraft = aircraftService.getAllByUserId(session.userId)
             call.respondHtml {
                 head { 
                     bootstrapHead("飛行記録編集")
@@ -1461,6 +1498,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                                     }
                                                 }
                                             }
+                                            flightComplianceFields(aircraft, flightLog)
                                             // Enhanced location input section
                                             div(classes = "row") {
                                                 div(classes = "col-12 mb-4") {
@@ -1618,7 +1656,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                                             }
                                             div(classes = "row") {
                                                 div(classes = "col-md-6 mb-3") {
-                                                    label(classes = "form-label") { +"総飛行時間" }
+                                                    label(classes = "form-label") { +"飛行時間（当該飛行）" }
                                                     textInput(classes = "form-control") { 
                                                         name = "totalFlightTime"
                                                         value = flightLog.totalFlightTime ?: flightLog.flightDuration ?: ""
@@ -1804,6 +1842,29 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                 }
             }
         }
+        post("/{id}/copy") {
+            val session = call.sessions.get<UserSession>()
+            if (session == null) {
+                call.respondRedirect("/login")
+                return@post
+            }
+            val id = call.parameters["id"]?.toIntOrNull()
+            val source = id?.let { flightLogService.getByIdAndUserId(it, session.userId) }
+            if (source == null) {
+                call.respond(HttpStatusCode.NotFound)
+                return@post
+            }
+            val copied = flightLogService.add(
+                source.copy(
+                    id = 0,
+                    flightDate = java.time.LocalDate.now().toString(),
+                    cumulativeFlightMinutes = null,
+                    createdAt = null,
+                    updatedAt = null
+                )
+            )
+            call.respondRedirect("/flightlogs/ui/${copied.id}")
+        }
         // HTMLフォームからのPOSTリクエストをPUT/DELETE/POSTに振り分け
         post("/{id}") {
             val session = call.sessions.get<UserSession>()
@@ -1886,7 +1947,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffLongitude = takeoffLongitude,
                     landingLatitude = landingLatitude,
                     landingLongitude = landingLongitude
-                        ), session.userId)
+                        ).bindFlightCompliance(params, pilotService, session.userId), session.userId)
                         if (updated) {
                             call.respondRedirect("/flightlogs/ui")
                         } else {
@@ -1985,7 +2046,7 @@ fun Route.configureFlightLogRouting(flightLogService: FlightLogService, slackSer
                     takeoffLongitude = takeoffLongitude,
                     landingLatitude = landingLatitude,
                     landingLongitude = landingLongitude
-                ))
+                ).bindFlightCompliance(params, pilotService, session.userId))
                 call.respondRedirect("/flightlogs/ui")
             } else {
                 val flightLog = call.receive<FlightLog>()

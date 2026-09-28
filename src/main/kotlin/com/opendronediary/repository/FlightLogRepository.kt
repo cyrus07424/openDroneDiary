@@ -11,64 +11,48 @@ class FlightLogRepository {
     
     fun getAllByUserId(userId: Int): List<FlightLog> = transaction {
         FlightLogs.select { FlightLogs.userId eq userId }
-            .map { 
-                FlightLog(
-                    id = it[FlightLogs.id],
-                    flightDate = it[FlightLogs.flightDate],
-                    takeoffLandingLocation = it[FlightLogs.takeoffLandingLocation],
-                    takeoffLandingTime = it[FlightLogs.takeoffLandingTime],
-                    flightDuration = it[FlightLogs.flightDuration],
-                    pilotName = it[FlightLogs.pilotName],
-                    pilotId = it[FlightLogs.pilotId],
-                    issuesAndResponses = it[FlightLogs.issuesAndResponses],
-                    userId = it[FlightLogs.userId],
-                    takeoffLocation = it[FlightLogs.takeoffLocation],
-                    landingLocation = it[FlightLogs.landingLocation],
-                    takeoffTime = it[FlightLogs.takeoffTime],
-                    landingTime = it[FlightLogs.landingTime],
-                    flightSummary = it[FlightLogs.flightSummary],
-                    totalFlightTime = it[FlightLogs.totalFlightTime],
-                    takeoffInputType = it[FlightLogs.takeoffInputType],
-                    landingInputType = it[FlightLogs.landingInputType],
-                    takeoffLatitude = it[FlightLogs.takeoffLatitude],
-                    takeoffLongitude = it[FlightLogs.takeoffLongitude],
-                    landingLatitude = it[FlightLogs.landingLatitude],
-                    landingLongitude = it[FlightLogs.landingLongitude],
-                    createdAt = it[FlightLogs.createdAt],
-                    updatedAt = it[FlightLogs.updatedAt]
-                )
-            }
+            .map { toFlightLog(it) }
+    }
+
+    private fun toFlightLog(row: ResultRow): FlightLog {
+        return FlightLog(
+            id = row[FlightLogs.id],
+            flightDate = row[FlightLogs.flightDate],
+            takeoffLandingLocation = row[FlightLogs.takeoffLandingLocation],
+            takeoffLandingTime = row[FlightLogs.takeoffLandingTime],
+            flightDuration = row[FlightLogs.flightDuration],
+            pilotName = row[FlightLogs.pilotName],
+            pilotId = row[FlightLogs.pilotId],
+            issuesAndResponses = row[FlightLogs.issuesAndResponses],
+            userId = row[FlightLogs.userId],
+            takeoffLocation = row[FlightLogs.takeoffLocation],
+            landingLocation = row[FlightLogs.landingLocation],
+            takeoffTime = row[FlightLogs.takeoffTime],
+            landingTime = row[FlightLogs.landingTime],
+            flightSummary = row[FlightLogs.flightSummary],
+            totalFlightTime = row[FlightLogs.totalFlightTime],
+            takeoffInputType = row[FlightLogs.takeoffInputType],
+            landingInputType = row[FlightLogs.landingInputType],
+            takeoffLatitude = row[FlightLogs.takeoffLatitude],
+            takeoffLongitude = row[FlightLogs.takeoffLongitude],
+            landingLatitude = row[FlightLogs.landingLatitude],
+            landingLongitude = row[FlightLogs.landingLongitude],
+            aircraftId = row[FlightLogs.aircraftId],
+            flightPurpose = row[FlightLogs.flightPurpose],
+            flightRoute = row[FlightLogs.flightRoute],
+            specificFlight = row[FlightLogs.specificFlight],
+            safetyMatters = row[FlightLogs.safetyMatters],
+            skillCertificateNumber = row[FlightLogs.skillCertificateNumber],
+            permissionNumber = row[FlightLogs.permissionNumber],
+            cumulativeFlightMinutes = row[FlightLogs.cumulativeFlightMinutes],
+            createdAt = row[FlightLogs.createdAt],
+            updatedAt = row[FlightLogs.updatedAt]
+        )
     }
 
     fun getByIdAndUserId(id: Int, userId: Int): FlightLog? = transaction {
         FlightLogs.select { (FlightLogs.id eq id) and (FlightLogs.userId eq userId) }
-            .map { 
-                FlightLog(
-                    id = it[FlightLogs.id],
-                    flightDate = it[FlightLogs.flightDate],
-                    takeoffLandingLocation = it[FlightLogs.takeoffLandingLocation],
-                    takeoffLandingTime = it[FlightLogs.takeoffLandingTime],
-                    flightDuration = it[FlightLogs.flightDuration],
-                    pilotName = it[FlightLogs.pilotName],
-                    pilotId = it[FlightLogs.pilotId],
-                    issuesAndResponses = it[FlightLogs.issuesAndResponses],
-                    userId = it[FlightLogs.userId],
-                    takeoffLocation = it[FlightLogs.takeoffLocation],
-                    landingLocation = it[FlightLogs.landingLocation],
-                    takeoffTime = it[FlightLogs.takeoffTime],
-                    landingTime = it[FlightLogs.landingTime],
-                    flightSummary = it[FlightLogs.flightSummary],
-                    totalFlightTime = it[FlightLogs.totalFlightTime],
-                    takeoffInputType = it[FlightLogs.takeoffInputType],
-                    landingInputType = it[FlightLogs.landingInputType],
-                    takeoffLatitude = it[FlightLogs.takeoffLatitude],
-                    takeoffLongitude = it[FlightLogs.takeoffLongitude],
-                    landingLatitude = it[FlightLogs.landingLatitude],
-                    landingLongitude = it[FlightLogs.landingLongitude],
-                    createdAt = it[FlightLogs.createdAt],
-                    updatedAt = it[FlightLogs.updatedAt]
-                )
-            }
+            .map { toFlightLog(it) }
             .singleOrNull()
     }
 
@@ -95,6 +79,14 @@ class FlightLogRepository {
             it[takeoffLongitude] = flightLog.takeoffLongitude
             it[landingLatitude] = flightLog.landingLatitude
             it[landingLongitude] = flightLog.landingLongitude
+            it[aircraftId] = flightLog.aircraftId
+            it[flightPurpose] = flightLog.flightPurpose
+            it[flightRoute] = flightLog.flightRoute
+            it[specificFlight] = flightLog.specificFlight
+            it[safetyMatters] = flightLog.safetyMatters
+            it[skillCertificateNumber] = flightLog.skillCertificateNumber
+            it[permissionNumber] = flightLog.permissionNumber
+            it[cumulativeFlightMinutes] = flightLog.cumulativeFlightMinutes
             it[createdAt] = now
             it[updatedAt] = now
         } get FlightLogs.id
@@ -124,6 +116,14 @@ class FlightLogRepository {
             it[takeoffLongitude] = flightLog.takeoffLongitude
             it[landingLatitude] = flightLog.landingLatitude
             it[landingLongitude] = flightLog.landingLongitude
+            it[aircraftId] = flightLog.aircraftId
+            it[flightPurpose] = flightLog.flightPurpose
+            it[flightRoute] = flightLog.flightRoute
+            it[specificFlight] = flightLog.specificFlight
+            it[safetyMatters] = flightLog.safetyMatters
+            it[skillCertificateNumber] = flightLog.skillCertificateNumber
+            it[permissionNumber] = flightLog.permissionNumber
+            it[cumulativeFlightMinutes] = flightLog.cumulativeFlightMinutes
             it[updatedAt] = LocalDateTime.now()
         }
         updateCount > 0

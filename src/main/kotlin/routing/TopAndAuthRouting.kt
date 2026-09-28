@@ -318,8 +318,10 @@ fun Route.configureTopAndAuthRouting(
                                     if (session != null) {
                                         div(classes = "alert alert-success") { +"ログイン中: ${session.username}" }
                                         div(classes = "d-grid gap-2") {
+                                            a(href = "/dashboard", classes = "btn btn-success") { +"ダッシュボード" }
                                             a(href = "/flightlogs/ui", classes = "btn btn-primary") { +"飛行記録一覧へ" }
-                                            a(href = "/pilots/ui", classes = "btn btn-info") { +"👨‍✈️ パイロット管理" }
+                                            a(href = "/aircraft/ui", classes = "btn btn-info") { +"機体台帳" }
+                                            a(href = "/pilots/ui", classes = "btn btn-info") { +"パイロット管理" }
                                             a(href = "/dailyinspections/ui", classes = "btn btn-primary") { +"日常点検記録一覧へ" }
                                             a(href = "/maintenanceinspections/ui", classes = "btn btn-primary") { +"点検整備記録一覧へ" }
                                             a(href = "/logout", classes = "btn btn-outline-secondary") { +"ログアウト" }

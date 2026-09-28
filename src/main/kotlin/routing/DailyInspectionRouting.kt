@@ -16,7 +16,12 @@ import utils.RequestContextHelper
 import routing.bootstrapHead
 import routing.addFormSubmissionModal
 
-fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyInspectionRecordService, slackService: SlackService) {
+fun Route.configureDailyInspectionRouting(
+    dailyInspectionRecordService: DailyInspectionRecordService,
+    slackService: SlackService,
+    aircraftService: com.opendronediary.service.AircraftService,
+    flightLogService: com.opendronediary.service.FlightLogService
+) {
     // Daily Inspection Record UI routes
     route("/dailyinspections/ui") {
         get {
@@ -26,6 +31,8 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                 return@get
             }
             val dailyInspectionRecords = dailyInspectionRecordService.getAllByUserId(session.userId)
+            val aircraft = aircraftService.getAllByUserId(session.userId)
+            val aircraftById = aircraft.associateBy { it.id }
             call.respondHtml {
                 head { bootstrapHead("日常点検記録一覧") }
                 body {
@@ -50,6 +57,7 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                                                             th { +"点検日" }
                                                             th { +"場所" }
                                                             th { +"実施者" }
+                                                            th { +"機体" }
                                                             th { +"点検結果" }
                                                             th(classes = "text-center") { +"操作" }
                                                         }
@@ -61,7 +69,17 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                                                                 td { +record.inspectionDate }
                                                                 td { +record.location }
                                                                 td { +record.inspectorName }
-                                                                td { +record.inspectionResult }
+                                                                td { +(record.aircraftId?.let { aircraftById[it]?.registrationSymbol } ?: "—") }
+                                                                td {
+                                                                    val abnormal = utils.DailyInspectionChecklist.abnormalLabels(record.checklistValues())
+                                                                    if (abnormal.isNotEmpty()) {
+                                                                        +"異常: ${abnormal.joinToString("、")}"
+                                                                    } else if (record.checklistValues().values.any { it != null }) {
+                                                                        +"異常なし"
+                                                                    } else {
+                                                                        +record.inspectionResult
+                                                                    }
+                                                                }
                                                                 td(classes = "text-center") {
                                                                     a(href = "/dailyinspections/ui/${record.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
                                                                     form(action = "/dailyinspections/ui/${record.id}", method = FormMethod.post, classes = "d-inline") {
@@ -114,15 +132,16 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                                                     }
                                                 }
                                                 div(classes = "col-md-6 mb-3") {
-                                                    label(classes = "form-label") { +"点検結果" }
+                                                    label(classes = "form-label") { +"特記事項" }
                                                     textArea(classes = "form-control") { 
                                                         name = "inspectionResult"
-                                                        placeholder = "点検結果を入力してください"
+                                                        placeholder = "異常の内容など。なければ空欄で構いません"
                                                         attributes["rows"] = "3"
-                                                        required = true
                                                     }
                                                 }
                                             }
+                                            aircraftSelectField(aircraft, null)
+                                            dailyChecklistFields(null)
                                             div(classes = "d-grid") {
                                                 submitInput(classes = "btn btn-success") { value = "日常点検記録を追加" }
                                             }
@@ -144,6 +163,7 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
             }
             val id = call.parameters["id"]?.toIntOrNull()
             val record = id?.let { dailyInspectionRecordService.getByIdAndUserId(it, session.userId) }
+            val aircraft = aircraftService.getAllByUserId(session.userId)
             if (record == null) {
                 call.respond(HttpStatusCode.NotFound)
                 return@get
@@ -192,15 +212,16 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                                                     }
                                                 }
                                                 div(classes = "col-md-6 mb-3") {
-                                                    label(classes = "form-label") { +"点検結果" }
+                                                    label(classes = "form-label") { +"特記事項" }
                                                     textArea(classes = "form-control") { 
                                                         name = "inspectionResult"
                                                         attributes["rows"] = "3"
-                                                        required = true
                                                         +record.inspectionResult
                                                     }
                                                 }
                                             }
+                                            aircraftSelectField(aircraft, record.aircraftId)
+                                            dailyChecklistFields(record)
                                             div(classes = "d-grid gap-2 d-md-block") {
                                                 submitInput(classes = "btn btn-primary") { value = "更新" }
                                             }
@@ -231,17 +252,15 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                 return@post
             }
             val id = call.parameters["id"]?.toIntOrNull()
-            val method = call.receiveParameters()["_method"]
+            val params = call.receiveParameters()
+            val method = params["_method"]
             when (method) {
                 "put" -> {
-                    val params = call.receiveParameters()
                     val inspectionDate = params["inspectionDate"] ?: ""
                     val location = params["location"] ?: ""
                     val inspectorName = params["inspectorName"] ?: ""
-                    val inspectionResult = params["inspectionResult"] ?: ""
-                    if (id != null && inspectionDate.isNotBlank() && location.isNotBlank() && 
-                        inspectorName.isNotBlank() && inspectionResult.isNotBlank()) {
-                        val updated = dailyInspectionRecordService.update(id, DailyInspectionRecord(id, inspectionDate, location, inspectorName, inspectionResult, session.userId), session.userId)
+                    if (id != null && inspectionDate.isNotBlank() && location.isNotBlank() && inspectorName.isNotBlank()) {
+                        val updated = dailyInspectionRecordService.update(id, params.bindDailyInspection(id, session.userId), session.userId)
                         if (updated) {
                             call.respondRedirect("/dailyinspections/ui")
                         } else {
@@ -274,8 +293,7 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                 val inspectionDate = params["inspectionDate"] ?: ""
                 val location = params["location"] ?: ""
                 val inspectorName = params["inspectorName"] ?: ""
-                val inspectionResult = params["inspectionResult"] ?: ""
-                val created = dailyInspectionRecordService.add(DailyInspectionRecord(0, inspectionDate, location, inspectorName, inspectionResult, session.userId))
+                val created = dailyInspectionRecordService.add(params.bindDailyInspection(0, session.userId))
                 
                 // Send Slack notification for daily inspection creation
                 try {
@@ -351,8 +369,7 @@ fun Route.configureDailyInspectionRouting(dailyInspectionRecordService: DailyIns
                 val inspectionDate = params["inspectionDate"] ?: ""
                 val location = params["location"] ?: ""
                 val inspectorName = params["inspectorName"] ?: ""
-                val inspectionResult = params["inspectionResult"] ?: ""
-                val created = dailyInspectionRecordService.add(DailyInspectionRecord(0, inspectionDate, location, inspectorName, inspectionResult, session.userId))
+                val created = dailyInspectionRecordService.add(params.bindDailyInspection(0, session.userId))
                 call.respondRedirect("/dailyinspections/ui")
             } else {
                 val record = call.receive<DailyInspectionRecord>()

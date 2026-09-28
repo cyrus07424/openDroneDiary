@@ -49,6 +49,18 @@ object DatabaseConfig {
             SchemaUtils.create(
                 Users,
                 Pilots,
+                Aircrafts,
+                FlightLogs,
+                DailyInspectionRecords,
+                MaintenanceInspectionRecords,
+                PasswordResetTokens,
+                UserRegistrationTokens
+            )
+            // 既存DBにも機体台帳と法令対応カラムを足す
+            SchemaUtils.createMissingTablesAndColumns(
+                Users,
+                Pilots,
+                Aircrafts,
                 FlightLogs,
                 DailyInspectionRecords,
                 MaintenanceInspectionRecords,

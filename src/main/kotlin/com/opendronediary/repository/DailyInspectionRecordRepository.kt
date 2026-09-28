@@ -19,6 +19,16 @@ class DailyInspectionRecordRepository {
                     inspectorName = it[DailyInspectionRecords.inspectorName],
                     inspectionResult = it[DailyInspectionRecords.inspectionResult],
                     userId = it[DailyInspectionRecords.userId],
+                    aircraftId = it[DailyInspectionRecords.aircraftId],
+                    airframeResult = it[DailyInspectionRecords.airframeResult],
+                    propellerResult = it[DailyInspectionRecords.propellerResult],
+                    frameResult = it[DailyInspectionRecords.frameResult],
+                    communicationResult = it[DailyInspectionRecords.communicationResult],
+                    propulsionResult = it[DailyInspectionRecords.propulsionResult],
+                    powerResult = it[DailyInspectionRecords.powerResult],
+                    automaticControlResult = it[DailyInspectionRecords.automaticControlResult],
+                    controllerResult = it[DailyInspectionRecords.controllerResult],
+                    batteryResult = it[DailyInspectionRecords.batteryResult],
                     createdAt = it[DailyInspectionRecords.createdAt],
                     updatedAt = it[DailyInspectionRecords.updatedAt]
                 )
@@ -35,6 +45,16 @@ class DailyInspectionRecordRepository {
                     inspectorName = it[DailyInspectionRecords.inspectorName],
                     inspectionResult = it[DailyInspectionRecords.inspectionResult],
                     userId = it[DailyInspectionRecords.userId],
+                    aircraftId = it[DailyInspectionRecords.aircraftId],
+                    airframeResult = it[DailyInspectionRecords.airframeResult],
+                    propellerResult = it[DailyInspectionRecords.propellerResult],
+                    frameResult = it[DailyInspectionRecords.frameResult],
+                    communicationResult = it[DailyInspectionRecords.communicationResult],
+                    propulsionResult = it[DailyInspectionRecords.propulsionResult],
+                    powerResult = it[DailyInspectionRecords.powerResult],
+                    automaticControlResult = it[DailyInspectionRecords.automaticControlResult],
+                    controllerResult = it[DailyInspectionRecords.controllerResult],
+                    batteryResult = it[DailyInspectionRecords.batteryResult],
                     createdAt = it[DailyInspectionRecords.createdAt],
                     updatedAt = it[DailyInspectionRecords.updatedAt]
                 )
@@ -50,6 +70,16 @@ class DailyInspectionRecordRepository {
             it[inspectorName] = dailyInspectionRecord.inspectorName
             it[inspectionResult] = dailyInspectionRecord.inspectionResult
             it[userId] = dailyInspectionRecord.userId
+            it[aircraftId] = dailyInspectionRecord.aircraftId
+            it[airframeResult] = dailyInspectionRecord.airframeResult
+            it[propellerResult] = dailyInspectionRecord.propellerResult
+            it[frameResult] = dailyInspectionRecord.frameResult
+            it[communicationResult] = dailyInspectionRecord.communicationResult
+            it[propulsionResult] = dailyInspectionRecord.propulsionResult
+            it[powerResult] = dailyInspectionRecord.powerResult
+            it[automaticControlResult] = dailyInspectionRecord.automaticControlResult
+            it[controllerResult] = dailyInspectionRecord.controllerResult
+            it[batteryResult] = dailyInspectionRecord.batteryResult
             it[createdAt] = now
             it[updatedAt] = now
         } get DailyInspectionRecords.id
@@ -64,6 +94,16 @@ class DailyInspectionRecordRepository {
             it[location] = dailyInspectionRecord.location
             it[inspectorName] = dailyInspectionRecord.inspectorName
             it[inspectionResult] = dailyInspectionRecord.inspectionResult
+            it[aircraftId] = dailyInspectionRecord.aircraftId
+            it[airframeResult] = dailyInspectionRecord.airframeResult
+            it[propellerResult] = dailyInspectionRecord.propellerResult
+            it[frameResult] = dailyInspectionRecord.frameResult
+            it[communicationResult] = dailyInspectionRecord.communicationResult
+            it[propulsionResult] = dailyInspectionRecord.propulsionResult
+            it[powerResult] = dailyInspectionRecord.powerResult
+            it[automaticControlResult] = dailyInspectionRecord.automaticControlResult
+            it[controllerResult] = dailyInspectionRecord.controllerResult
+            it[batteryResult] = dailyInspectionRecord.batteryResult
             it[updatedAt] = LocalDateTime.now()
         }
         updateCount > 0

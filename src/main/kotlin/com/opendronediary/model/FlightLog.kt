@@ -27,6 +27,14 @@ data class FlightLog(
     val takeoffLongitude: BigDecimal? = null, // 離陸場所経度
     val landingLatitude: BigDecimal? = null, // 着陸場所緯度
     val landingLongitude: BigDecimal? = null, // 着陸場所経度
+    val aircraftId: Int? = null, // 機体台帳のID
+    val flightPurpose: String? = null, // 飛行の目的
+    val flightRoute: String? = null, // 飛行の経路
+    val specificFlight: String? = null, // 飛行禁止空域・飛行の方法（コードのカンマ区切り）
+    val safetyMatters: String? = null, // 飛行の安全に影響のあった事項
+    val skillCertificateNumber: String? = null, // 記録時点の技能証明番号
+    val permissionNumber: String? = null, // 飛行許可・承認番号（任意）
+    val cumulativeFlightMinutes: Int? = null, // 製造後の総飛行時間（分、保存時の写し）
     val createdAt: LocalDateTime? = null,
     val updatedAt: LocalDateTime? = null
 )

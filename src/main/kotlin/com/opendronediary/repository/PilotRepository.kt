@@ -22,6 +22,7 @@ class PilotRepository {
     fun insert(pilot: Pilot): Pilot {
         val insertedId = Pilots.insert {
             it[name] = pilot.name
+            it[skillCertificateNumber] = pilot.skillCertificateNumber
             it[userId] = pilot.userId
             it[createdAt] = LocalDateTime.now()
             it[updatedAt] = LocalDateTime.now()
@@ -33,6 +34,7 @@ class PilotRepository {
     fun update(id: Int, pilot: Pilot, userId: Int): Boolean {
         val updatedRows = Pilots.update({ (Pilots.id eq id) and (Pilots.userId eq userId) }) {
             it[name] = pilot.name
+            it[skillCertificateNumber] = pilot.skillCertificateNumber
             it[updatedAt] = LocalDateTime.now()
         }
         return updatedRows > 0
@@ -48,6 +50,7 @@ class PilotRepository {
             id = row[Pilots.id],
             name = row[Pilots.name],
             userId = row[Pilots.userId],
+            skillCertificateNumber = row[Pilots.skillCertificateNumber],
             createdAt = row[Pilots.createdAt],
             updatedAt = row[Pilots.updatedAt]
         )

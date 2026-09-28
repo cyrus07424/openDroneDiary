@@ -6,7 +6,9 @@ import com.opendronediary.repository.FlightLogRepository
 import com.opendronediary.repository.DailyInspectionRecordRepository
 import com.opendronediary.repository.MaintenanceInspectionRecordRepository
 import com.opendronediary.repository.UserRepository
+import com.opendronediary.repository.AircraftRepository
 import com.opendronediary.repository.PilotRepository
+import com.opendronediary.service.AircraftService
 import com.opendronediary.service.FlightLogService
 import com.opendronediary.service.DailyInspectionRecordService
 import com.opendronediary.service.MaintenanceInspectionRecordService
@@ -19,11 +21,15 @@ import routing.configureTopAndAuthRouting
 import routing.configureFlightLogRouting
 import routing.configureDailyInspectionRouting
 import routing.configureMaintenanceInspectionRouting
+import routing.configureAircraftRouting
+import routing.configureDashboardRouting
 import routing.configurePilotRouting
 
 fun Application.configureRouting() {
     val flightLogRepository = FlightLogRepository()
-    val flightLogService = FlightLogService(flightLogRepository)
+    val aircraftRepository = AircraftRepository()
+    val aircraftService = AircraftService(aircraftRepository)
+    val flightLogService = FlightLogService(flightLogRepository, aircraftRepository)
     val dailyInspectionRecordRepository = DailyInspectionRecordRepository()
     val dailyInspectionRecordService = DailyInspectionRecordService(dailyInspectionRecordRepository)
     val maintenanceInspectionRecordRepository = MaintenanceInspectionRecordRepository()
@@ -38,9 +44,11 @@ fun Application.configureRouting() {
     
     routing {
         configureTopAndAuthRouting(userService, emailService, slackService, captchaService)
-        configureFlightLogRouting(flightLogService, slackService, pilotService)
-        configureDailyInspectionRouting(dailyInspectionRecordService, slackService)
-        configureMaintenanceInspectionRouting(maintenanceInspectionRecordService, slackService)
+        configureDashboardRouting(aircraftService, flightLogService, dailyInspectionRecordService, maintenanceInspectionRecordService)
+        configureAircraftRouting(aircraftService, flightLogService, dailyInspectionRecordService, maintenanceInspectionRecordService)
+        configureFlightLogRouting(flightLogService, slackService, pilotService, aircraftService)
+        configureDailyInspectionRouting(dailyInspectionRecordService, slackService, aircraftService, flightLogService)
+        configureMaintenanceInspectionRouting(maintenanceInspectionRecordService, slackService, aircraftService, flightLogService)
         configurePilotRouting(pilotService)
     }
 }
