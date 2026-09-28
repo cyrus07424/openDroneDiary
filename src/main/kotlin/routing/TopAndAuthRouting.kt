@@ -9,6 +9,7 @@ import io.ktor.http.*
 import com.opendronediary.model.UserSession
 import com.opendronediary.service.UserService
 import com.opendronediary.service.RegisterResult
+import com.opendronediary.service.RegisterField
 import com.opendronediary.service.ConfirmRegistrationResult
 import com.opendronediary.service.ResetPasswordResult
 import com.opendronediary.service.EmailService
@@ -22,6 +23,276 @@ import utils.PolicyHelper.addFooter
 import utils.PolicyHelper.isTermsOfServiceEnabled
 import utils.PolicyHelper.getTermsOfServiceUrl
 import utils.RequestContextHelper
+
+/**
+ * ユーザー登録フォームの再表示に使う状態。
+ * 入力値を保持したまま、項目ごとのエラーメッセージを画面に出すために使う。
+ */
+data class RegisterFormState(
+    val username: String = "",
+    val email: String = "",
+    val agreeToTerms: Boolean = false,
+    val fieldErrors: Map<String, String> = emptyMap(),
+    val summaryMessage: String? = null,
+)
+
+private fun FlowContent.invalidFeedback(message: String?) {
+    if (message != null) {
+        div(classes = "invalid-feedback d-block") { +message }
+    }
+}
+
+private fun controlClasses(hasError: Boolean): String =
+    if (hasError) "form-control is-invalid" else "form-control"
+
+/**
+ * ユーザー登録フォームを描画する。エラーがある場合も同じフォームに戻し、
+ * 入力値を保ったまま該当の入力欄にエラーメッセージを表示する。
+ */
+fun HTML.registerPage(captchaChallengeId: String, state: RegisterFormState) {
+    val errors = state.fieldErrors
+    val firstErrorField = listOf("username", "email", "password", "captchaAnswer", "agreeToTerms")
+        .firstOrNull { errors.containsKey(it) }
+    head { bootstrapHead("ユーザー登録", includeSEO = true) }
+    body(classes = "d-flex flex-column min-vh-100") {
+        addGTMBodyScript()
+        div(classes = "container mt-5") {
+            div(classes = "row justify-content-center") {
+                div(classes = "col-md-6") {
+                    div(classes = "card") {
+                        div(classes = "card-header") {
+                            h1(classes = "card-title mb-0") { +"ユーザー登録" }
+                        }
+                        div(classes = "card-body") {
+                            if (state.summaryMessage != null) {
+                                div(classes = "alert alert-danger") {
+                                    attributes["role"] = "alert"
+                                    +state.summaryMessage
+                                }
+                            }
+                            form(action = "/register", method = FormMethod.post) {
+                                attributes["novalidate"] = ""
+                                hiddenInput {
+                                    name = "captchaChallengeId"
+                                    value = captchaChallengeId
+                                }
+                                div(classes = "mb-3") {
+                                    label(classes = "form-label") {
+                                        htmlFor = "registerUsername"
+                                        +"ユーザー名"
+                                    }
+                                    textInput(classes = controlClasses(errors.containsKey("username"))) {
+                                        name = "username"
+                                        id = "registerUsername"
+                                        value = state.username
+                                        placeholder = "ユーザー名を入力してください"
+                                        required = true
+                                        if (firstErrorField == "username") attributes["autofocus"] = ""
+                                    }
+                                    invalidFeedback(errors["username"])
+                                }
+                                div(classes = "mb-3") {
+                                    label(classes = "form-label") {
+                                        htmlFor = "registerEmail"
+                                        +"メールアドレス"
+                                    }
+                                    emailInput(classes = controlClasses(errors.containsKey("email"))) {
+                                        name = "email"
+                                        id = "registerEmail"
+                                        value = state.email
+                                        placeholder = "メールアドレスを入力してください"
+                                        required = true
+                                        if (firstErrorField == "email") attributes["autofocus"] = ""
+                                    }
+                                    invalidFeedback(errors["email"])
+                                }
+                                div(classes = "mb-3") {
+                                    label(classes = "form-label") {
+                                        htmlFor = "registerPassword"
+                                        +"パスワード"
+                                    }
+                                    passwordInput(classes = controlClasses(errors.containsKey("password"))) {
+                                        name = "password"
+                                        id = "registerPassword"
+                                        placeholder = "パスワードを入力してください"
+                                        required = true
+                                        if (firstErrorField == "password") attributes["autofocus"] = ""
+                                        attributes["onkeyup"] = "checkPasswordStrength('registerPassword', 'passwordStrengthMeter')"
+                                    }
+                                    invalidFeedback(errors["password"])
+                                    // Password strength meter
+                                    div(classes = "mt-2") {
+                                        div(classes = "password-strength-meter") {
+                                            id = "passwordStrengthMeter"
+                                            style = "display: none;"
+                                            div(classes = "password-strength-bar") {
+                                                div(classes = "password-strength-fill") {
+                                                    id = "passwordStrengthFill"
+                                                }
+                                            }
+                                            div(classes = "password-strength-text mt-1") {
+                                                id = "passwordStrengthText"
+                                            }
+                                        }
+                                    }
+                                }
+
+                                div(classes = "mb-3") {
+                                    label(classes = "form-label") {
+                                        htmlFor = "registerCaptchaAnswer"
+                                        +"画像認証"
+                                    }
+                                    div(classes = "mb-2") {
+                                        img(
+                                            src = "/register/captcha/$captchaChallengeId",
+                                            alt = "CAPTCHA画像",
+                                            classes = "img-fluid border rounded"
+                                        ) {
+                                            attributes["style"] = "max-width: 220px;"
+                                        }
+                                    }
+                                    textInput(classes = controlClasses(errors.containsKey("captchaAnswer"))) {
+                                        name = "captchaAnswer"
+                                        id = "registerCaptchaAnswer"
+                                        placeholder = "画像に表示された文字を入力してください"
+                                        required = true
+                                        if (firstErrorField == "captchaAnswer") attributes["autofocus"] = ""
+                                        attributes["autocomplete"] = "off"
+                                        attributes["autocapitalize"] = "off"
+                                        attributes["spellcheck"] = "false"
+                                    }
+                                    invalidFeedback(errors["captchaAnswer"])
+                                    div(classes = "form-text") {
+                                        +"画像が読みにくい場合はページを再読み込みしてください。"
+                                    }
+                                }
+
+                                // Terms of Service checkbox - only show if URL is configured
+                                if (isTermsOfServiceEnabled()) {
+                                    div(classes = "mb-3") {
+                                        div(classes = "form-check") {
+                                            checkBoxInput(
+                                                classes = if (errors.containsKey("agreeToTerms")) {
+                                                    "form-check-input is-invalid"
+                                                } else {
+                                                    "form-check-input"
+                                                }
+                                            ) {
+                                                name = "agreeToTerms"
+                                                id = "agreeToTerms"
+                                                required = true
+                                                checked = state.agreeToTerms
+                                            }
+                                            label(classes = "form-check-label") {
+                                                htmlFor = "agreeToTerms"
+                                                unsafe {
+                                                    raw("""<a href="${getTermsOfServiceUrl()}" target="_blank" class="text-decoration-none">利用規約</a>に同意します""")
+                                                }
+                                            }
+                                            invalidFeedback(errors["agreeToTerms"])
+                                        }
+                                    }
+                                }
+
+                                div(classes = "d-grid") {
+                                    submitInput(classes = "btn btn-success") { value = "登録" }
+                                }
+                            }
+                            hr()
+                            div(classes = "text-center") {
+                                a(href = "/login", classes = "btn btn-link") { +"ログインはこちら" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        addPasswordStrengthMeter()
+        addFormSubmissionModal()
+        addFooter()
+    }
+}
+
+/**
+ * ログインフォームの再表示に使う状態。
+ */
+data class LoginFormState(
+    val email: String = "",
+    val errorMessage: String? = null,
+)
+
+/**
+ * ログインフォームを描画する。認証に失敗した場合も同じフォームに戻し、
+ * メールアドレスを保持したままエラーメッセージを表示する。
+ */
+fun HTML.loginPage(state: LoginFormState) {
+    val hasError = state.errorMessage != null
+    head { bootstrapHead("ログイン", includeSEO = true) }
+    body(classes = "d-flex flex-column min-vh-100") {
+        addGTMBodyScript()
+        div(classes = "container mt-5") {
+            div(classes = "row justify-content-center") {
+                div(classes = "col-md-6") {
+                    div(classes = "card") {
+                        div(classes = "card-header") {
+                            h1(classes = "card-title mb-0") { +"ログイン" }
+                        }
+                        div(classes = "card-body") {
+                            if (state.errorMessage != null) {
+                                div(classes = "alert alert-danger") {
+                                    attributes["role"] = "alert"
+                                    +state.errorMessage
+                                }
+                            }
+                            form(action = "/login", method = FormMethod.post) {
+                                div(classes = "mb-3") {
+                                    label(classes = "form-label") {
+                                        htmlFor = "loginEmail"
+                                        +"メールアドレス"
+                                    }
+                                    emailInput(classes = controlClasses(hasError)) {
+                                        name = "email"
+                                        id = "loginEmail"
+                                        value = state.email
+                                        placeholder = "メールアドレスを入力してください"
+                                        required = true
+                                    }
+                                }
+                                div(classes = "mb-3") {
+                                    label(classes = "form-label") {
+                                        htmlFor = "loginPassword"
+                                        +"パスワード"
+                                    }
+                                    passwordInput(classes = controlClasses(hasError)) {
+                                        name = "password"
+                                        id = "loginPassword"
+                                        placeholder = "パスワードを入力してください"
+                                        required = true
+                                        if (hasError) attributes["autofocus"] = ""
+                                    }
+                                    if (hasError) {
+                                        invalidFeedback("メールアドレスとパスワードを確認してください。")
+                                    }
+                                }
+                                div(classes = "d-grid") {
+                                    submitInput(classes = "btn btn-primary") { value = "ログイン" }
+                                }
+                            }
+                            hr()
+                            div(classes = "text-center") {
+                                a(href = "/register", classes = "btn btn-link") { +"ユーザー登録はこちら" }
+                                br()
+                                a(href = "/forgot-password", classes = "btn btn-link text-muted") { +"パスワードを忘れた場合" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        addFormSubmissionModal()
+        addFooter()
+    }
+}
 
 // Helper function to add form submission modal dialog and JavaScript
 fun BODY.addFormSubmissionModal() {
@@ -357,52 +628,7 @@ fun Route.configureTopAndAuthRouting(
     // User authentication routes
     get("/login") {
         call.respondHtml {
-            head { bootstrapHead("ログイン", includeSEO = true) }
-            body(classes = "d-flex flex-column min-vh-100") {
-                addGTMBodyScript()
-                div(classes = "container mt-5") {
-                    div(classes = "row justify-content-center") {
-                        div(classes = "col-md-6") {
-                            div(classes = "card") {
-                                div(classes = "card-header") {
-                                    h1(classes = "card-title mb-0") { +"ログイン" }
-                                }
-                                div(classes = "card-body") {
-                                    form(action = "/login", method = FormMethod.post) {
-                                        div(classes = "mb-3") {
-                                            label(classes = "form-label") { +"メールアドレス" }
-                                            emailInput(classes = "form-control") { 
-                                                name = "email"
-                                                placeholder = "メールアドレスを入力してください"
-                                                required = true
-                                            }
-                                        }
-                                        div(classes = "mb-3") {
-                                            label(classes = "form-label") { +"パスワード" }
-                                            passwordInput(classes = "form-control") { 
-                                                name = "password"
-                                                placeholder = "パスワードを入力してください"
-                                                required = true
-                                            }
-                                        }
-                                        div(classes = "d-grid") {
-                                            submitInput(classes = "btn btn-primary") { value = "ログイン" }
-                                        }
-                                    }
-                                    hr()
-                                    div(classes = "text-center") {
-                                        a(href = "/register", classes = "btn btn-link") { +"ユーザー登録はこちら" }
-                                        br()
-                                        a(href = "/forgot-password", classes = "btn btn-link text-muted") { +"パスワードを忘れた場合" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                addFormSubmissionModal()
-                addFooter()
-            }
+            loginPage(LoginFormState())
         }
     }
     
@@ -433,28 +659,12 @@ fun Route.configureTopAndAuthRouting(
             call.respondRedirect("/")
         } else {
             call.respondHtml(HttpStatusCode.Unauthorized) {
-                head { bootstrapHead("ログインエラー") }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    div(classes = "container mt-5") {
-                        div(classes = "row justify-content-center") {
-                            div(classes = "col-md-6") {
-                                div(classes = "card") {
-                                    div(classes = "card-header") {
-                                        h1(classes = "card-title mb-0") { +"ログインエラー" }
-                                    }
-                                    div(classes = "card-body") {
-                                        div(classes = "alert alert-danger") {
-                                            +"メールアドレスまたはパスワードが間違っています。"
-                                        }
-                                        a(href = "/login", classes = "btn btn-primary") { +"戻る" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    addFooter()
-                }
+                loginPage(
+                    LoginFormState(
+                        email = email,
+                        errorMessage = "メールアドレスまたはパスワードが間違っています。"
+                    )
+                )
             }
         }
     }
@@ -462,222 +672,70 @@ fun Route.configureTopAndAuthRouting(
     get("/register") {
         val captchaChallenge = captchaService.createChallenge()
         call.respondHtml {
-            head { bootstrapHead("ユーザー登録", includeSEO = true) }
-            body(classes = "d-flex flex-column min-vh-100") {
-                addGTMBodyScript()
-                div(classes = "container mt-5") {
-                    div(classes = "row justify-content-center") {
-                        div(classes = "col-md-6") {
-                            div(classes = "card") {
-                                div(classes = "card-header") {
-                                    h1(classes = "card-title mb-0") { +"ユーザー登録" }
-                                }
-                                div(classes = "card-body") {
-                                    form(action = "/register", method = FormMethod.post) {
-                                        hiddenInput {
-                                            name = "captchaChallengeId"
-                                            value = captchaChallenge.id
-                                        }
-                                        div(classes = "mb-3") {
-                                            label(classes = "form-label") { +"ユーザー名" }
-                                            textInput(classes = "form-control") { 
-                                                name = "username"
-                                                placeholder = "ユーザー名を入力してください"
-                                                required = true
-                                            }
-                                        }
-                                        div(classes = "mb-3") {
-                                            label(classes = "form-label") { +"メールアドレス" }
-                                            emailInput(classes = "form-control") { 
-                                                name = "email"
-                                                placeholder = "メールアドレスを入力してください"
-                                                required = true
-                                            }
-                                        }
-                                        div(classes = "mb-3") {
-                                            label(classes = "form-label") { +"パスワード" }
-                                            passwordInput(classes = "form-control") { 
-                                                name = "password"
-                                                id = "registerPassword"
-                                                placeholder = "パスワードを入力してください"
-                                                required = true
-                                                attributes["onkeyup"] = "checkPasswordStrength('registerPassword', 'passwordStrengthMeter')"
-                                            }
-                                            // Password strength meter
-                                            div(classes = "mt-2") {
-                                                div(classes = "password-strength-meter") {
-                                                    id = "passwordStrengthMeter"
-                                                    style = "display: none;"
-                                                    div(classes = "password-strength-bar") {
-                                                        div(classes = "password-strength-fill") {
-                                                            id = "passwordStrengthFill"
-                                                        }
-                                                    }
-                                                    div(classes = "password-strength-text mt-1") {
-                                                        id = "passwordStrengthText"
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        div(classes = "mb-3") {
-                                            label(classes = "form-label") { +"画像認証" }
-                                            div(classes = "mb-2") {
-                                                img(
-                                                    src = "/register/captcha/${captchaChallenge.id}",
-                                                    alt = "CAPTCHA画像",
-                                                    classes = "img-fluid border rounded"
-                                                ) {
-                                                    attributes["style"] = "max-width: 220px;"
-                                                }
-                                            }
-                                            textInput(classes = "form-control") {
-                                                name = "captchaAnswer"
-                                                placeholder = "画像に表示された文字を入力してください"
-                                                required = true
-                                                attributes["autocomplete"] = "off"
-                                                attributes["autocapitalize"] = "off"
-                                                attributes["spellcheck"] = "false"
-                                            }
-                                            div(classes = "form-text") {
-                                                +"画像が読みにくい場合はページを再読み込みしてください。"
-                                            }
-                                        }
-                                         
-                                        // Terms of Service checkbox - only show if URL is configured
-                                        if (isTermsOfServiceEnabled()) {
-                                            div(classes = "mb-3") {
-                                                div(classes = "form-check") {
-                                                    checkBoxInput(classes = "form-check-input") {
-                                                        name = "agreeToTerms"
-                                                        id = "agreeToTerms"
-                                                        required = true
-                                                    }
-                                                    label(classes = "form-check-label") {
-                                                        htmlFor = "agreeToTerms"
-                                                        unsafe {
-                                                            raw("""<a href="${getTermsOfServiceUrl()}" target="_blank" class="text-decoration-none">利用規約</a>に同意します""")
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        
-                                        div(classes = "d-grid") {
-                                            submitInput(classes = "btn btn-success") { value = "登録" }
-                                        }
-                                    }
-                                    hr()
-                                    div(classes = "text-center") {
-                                        a(href = "/login", classes = "btn btn-link") { +"ログインはこちら" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                addPasswordStrengthMeter()
-                addFormSubmissionModal()
-                addFooter()
-            }
+            registerPage(captchaChallenge.id, RegisterFormState())
         }
     }
     
     post("/register") {
         val params = call.receiveParameters()
-        val username = params["username"] ?: ""
+        val username = params["username"]?.trim() ?: ""
         val password = params["password"] ?: ""
-        val email = params["email"] ?: ""
+        val email = params["email"]?.trim() ?: ""
         val captchaChallengeId = params["captchaChallengeId"] ?: ""
         val captchaAnswer = params["captchaAnswer"] ?: ""
         val agreeToTerms = params["agreeToTerms"] ?: ""
-        
-        if (username.isBlank() || password.isBlank() || email.isBlank()) {
-            call.respondHtml(HttpStatusCode.BadRequest) {
-                head { bootstrapHead("登録エラー") }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    div(classes = "container mt-5") {
-                        div(classes = "row justify-content-center") {
-                            div(classes = "col-md-6") {
-                                div(classes = "card") {
-                                    div(classes = "card-header") {
-                                        h1(classes = "card-title mb-0") { +"入力エラー" }
-                                    }
-                                    div(classes = "card-body") {
-                                        div(classes = "alert alert-danger") {
-                                            +"ユーザー名、メールアドレス、パスワードは必須です。"
-                                        }
-                                        a(href = "/register", classes = "btn btn-primary") { +"戻る" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    addFooter()
-                }
+
+        // フォームを再表示するときは画像認証を作り直す（同じ問題は再利用できないため）
+        suspend fun respondWithErrors(
+            status: HttpStatusCode,
+            fieldErrors: Map<String, String>,
+            summaryMessage: String = "入力内容を確認してください。",
+        ) {
+            val challenge = captchaService.createChallenge()
+            call.respondHtml(status) {
+                registerPage(
+                    challenge.id,
+                    RegisterFormState(
+                        username = username,
+                        email = email,
+                        agreeToTerms = agreeToTerms.isNotBlank(),
+                        fieldErrors = fieldErrors,
+                        summaryMessage = summaryMessage,
+                    )
+                )
             }
+        }
+
+        val inputErrors = buildMap {
+            if (username.isBlank()) put("username", "ユーザー名を入力してください。")
+            if (email.isBlank()) {
+                put("email", "メールアドレスを入力してください。")
+            } else if (!email.contains("@") || email.startsWith("@") || email.endsWith("@")) {
+                put("email", "メールアドレスの形式が正しくありません。")
+            }
+            if (password.isBlank()) put("password", "パスワードを入力してください。")
+        }
+        if (inputErrors.isNotEmpty()) {
+            respondWithErrors(HttpStatusCode.BadRequest, inputErrors)
             return@post
         }
 
         if (!captchaService.verifyChallenge(captchaChallengeId, captchaAnswer)) {
-            call.respondHtml(HttpStatusCode.BadRequest) {
-                head { bootstrapHead("登録エラー") }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    div(classes = "container mt-5") {
-                        div(classes = "row justify-content-center") {
-                            div(classes = "col-md-6") {
-                                div(classes = "card") {
-                                    div(classes = "card-header") {
-                                        h1(classes = "card-title mb-0") { +"画像認証エラー" }
-                                    }
-                                    div(classes = "card-body") {
-                                        div(classes = "alert alert-danger") {
-                                            +"画像認証に失敗しました。再度お試しください。"
-                                        }
-                                        a(href = "/register", classes = "btn btn-primary") { +"戻る" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    addFooter()
-                }
-            }
+            respondWithErrors(
+                HttpStatusCode.BadRequest,
+                mapOf("captchaAnswer" to "画像認証に失敗しました。新しい画像の文字を入力してください。")
+            )
             return@post
         }
-         
+
         // Check terms of service agreement if enabled
         if (isTermsOfServiceEnabled() && agreeToTerms.isBlank()) {
-            call.respondHtml(HttpStatusCode.BadRequest) {
-                head { bootstrapHead("登録エラー") }
-                body(classes = "d-flex flex-column min-vh-100") {
-                    addGTMBodyScript()
-                    div(classes = "container mt-5") {
-                        div(classes = "row justify-content-center") {
-                            div(classes = "col-md-6") {
-                                div(classes = "card") {
-                                    div(classes = "card-header") {
-                                        h1(classes = "card-title mb-0") { +"利用規約エラー" }
-                                    }
-                                    div(classes = "card-body") {
-                                        div(classes = "alert alert-danger") {
-                                            +"利用規約への同意は必須です。"
-                                        }
-                                        a(href = "/register", classes = "btn btn-primary") { +"戻る" }
-                                    }
-                                }
-
-                            }
-                        }
-                    }
-                    addFooter()
-                }
-            }
+            respondWithErrors(
+                HttpStatusCode.BadRequest,
+                mapOf("agreeToTerms" to "利用規約への同意は必須です。")
+            )
             return@post
         }
-        
         val result = userService.register(username, password, email)
         when (result) {
             is RegisterResult.PendingVerification -> {
@@ -737,64 +795,32 @@ fun Route.configureTopAndAuthRouting(
                 }
             }
             is RegisterResult.Failure -> {
-                call.respondHtml(HttpStatusCode.Conflict) {
-                    head { bootstrapHead("登録エラー") }
-                    body(classes = "d-flex flex-column min-vh-100") {
-                        addGTMBodyScript()
-                        div(classes = "container mt-5") {
-                            div(classes = "row justify-content-center") {
-                                div(classes = "col-md-6") {
-                                    div(classes = "card") {
-                                        div(classes = "card-header") {
-                                            h1(classes = "card-title mb-0") { +"登録エラー" }
-                                        }
-                                        div(classes = "card-body") {
-                                            div(classes = "alert alert-danger") {
-                                                +result.message
-                                            }
-                                            a(href = "/register", classes = "btn btn-primary") { +"戻る" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        addFooter()
-                    }
+                val field = when (result.field) {
+                    RegisterField.USERNAME -> "username"
+                    RegisterField.EMAIL -> "email"
+                    null -> null
+                }
+                if (field != null) {
+                    respondWithErrors(HttpStatusCode.Conflict, mapOf(field to result.message))
+                } else {
+                    respondWithErrors(HttpStatusCode.Conflict, emptyMap(), result.message)
                 }
             }
             is RegisterResult.WeakPassword -> {
-                call.respondHtml(HttpStatusCode.BadRequest) {
-                    head { bootstrapHead("パスワード強度エラー") }
-                    body(classes = "d-flex flex-column min-vh-100") {
-                        addGTMBodyScript()
-                        div(classes = "container mt-5") {
-                            div(classes = "row justify-content-center") {
-                                div(classes = "col-md-6") {
-                                    div(classes = "card") {
-                                        div(classes = "card-header") {
-                                            h1(classes = "card-title mb-0") { +"パスワード強度不足" }
-                                        }
-                                        div(classes = "card-body") {
-                                            div(classes = "alert alert-warning") {
-                                                strong { +result.validation.feedback }
-                                                if (result.validation.suggestions.isNotEmpty()) {
-                                                    br()
-                                                    +"推奨：${result.validation.suggestions}"
-                                                }
-                                                if (result.validation.warning.isNotEmpty()) {
-                                                    br()
-                                                    +"警告：${result.validation.warning}"
-                                                }
-                                            }
-                                            a(href = "/register", classes = "btn btn-primary") { +"戻る" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        addFooter()
+                val detail = buildString {
+                    append(result.validation.feedback)
+                    if (result.validation.suggestions.isNotEmpty()) {
+                        append(" 推奨：${result.validation.suggestions}")
+                    }
+                    if (result.validation.warning.isNotEmpty()) {
+                        append(" 警告：${result.validation.warning}")
                     }
                 }
+                respondWithErrors(
+                    HttpStatusCode.BadRequest,
+                    mapOf("password" to detail),
+                    "パスワードの強度が足りません。"
+                )
             }
         }
     }

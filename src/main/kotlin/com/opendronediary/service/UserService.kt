@@ -12,12 +12,12 @@ class UserService(private val repository: UserRepository) {
     
     fun register(username: String, password: String, email: String): RegisterResult {
         if (repository.findByUsername(username) != null) {
-            return RegisterResult.Failure("ユーザー名が既に使用されています")
+            return RegisterResult.Failure("ユーザー名が既に使用されています", RegisterField.USERNAME)
         }
         
         // Check if email is already used
         if (repository.findByEmail(email) != null) {
-            return RegisterResult.Failure("メールアドレスが既に使用されています")
+            return RegisterResult.Failure("メールアドレスが既に使用されています", RegisterField.EMAIL)
         }
         
         // Validate password strength
@@ -130,8 +130,21 @@ class UserService(private val repository: UserRepository) {
  */
 sealed class RegisterResult {
     data class PendingVerification(val email: String, val token: String) : RegisterResult()
-    data class Failure(val message: String) : RegisterResult()
+
+    /**
+     * 登録に失敗した場合の結果。
+     * [field] は入力フォーム上でエラーを表示すべき項目（特定できない場合は null）。
+     */
+    data class Failure(val message: String, val field: RegisterField? = null) : RegisterResult()
     data class WeakPassword(val validation: PasswordValidationResult) : RegisterResult()
+}
+
+/**
+ * ユーザー登録フォームの入力項目。
+ */
+enum class RegisterField {
+    USERNAME,
+    EMAIL,
 }
 
 sealed class ConfirmRegistrationResult {
