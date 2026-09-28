@@ -61,7 +61,9 @@ class RegistrationCaptchaIntegrationTest {
             )
         }
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(HttpStatusCode.BadRequest, response.status)
+        val body = response.bodyAsText()
+        kotlin.test.assertTrue(body.contains("画像認証に失敗しました"))
+        kotlin.test.assertFalse(body.contains("リクエストが正しくありません"))
     }
 
     private fun extractChallengeId(content: String): String? {

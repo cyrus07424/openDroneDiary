@@ -105,15 +105,26 @@ fun BODY.addFormSubmissionModal() {
                         // Get the submit button that was clicked
                         const submitButton = form.querySelector('input[type="submit"]');
                         
-                        // Disable the submit button to prevent double-clicking
-                        if (submitButton) {
-                            submitButton.disabled = true;
-                        }
+                        // Disabling the submitter inside submit cancels the POST in some browsers.
+                        // Defer it so the request body is built first.
+                        setTimeout(function() {
+                            if (submitButton) {
+                                submitButton.disabled = true;
+                            }
+                        }, 0);
                         
                         // Set appropriate message and show modal
-                        const message = getFormMessage(form);
-                        modalMessage.textContent = message;
-                        modal.show();
+                        try {
+                            const message = getFormMessage(form);
+                            if (modalMessage) {
+                                modalMessage.textContent = message;
+                            }
+                            if (modal) {
+                                modal.show();
+                            }
+                        } catch (err) {
+                            console.error(err);
+                        }
                         
                         // Re-enable submit button after a delay in case of errors
                         setTimeout(function() {
@@ -670,7 +681,7 @@ fun Route.configureTopAndAuthRouting(
         val result = userService.register(username, password, email)
         when (result) {
             is RegisterResult.PendingVerification -> {
-                // Send verification email
+                val emailConfigured = emailService.isConfigured()
                 emailService.sendRegistrationVerificationEmail(email, username, result.token)
                 
                 // Send Slack notification for provisional registration
@@ -690,7 +701,7 @@ fun Route.configureTopAndAuthRouting(
                 }
                 
                 call.respondHtml {
-                    head { bootstrapHead("確認メール送信完了") }
+                    head { bootstrapHead(if (emailConfigured) "確認メール送信完了" else "仮登録完了") }
                     body(classes = "d-flex flex-column min-vh-100") {
                         addGTMBodyScript()
                         div(classes = "container mt-5") {
@@ -698,13 +709,23 @@ fun Route.configureTopAndAuthRouting(
                                 div(classes = "col-md-6") {
                                     div(classes = "card") {
                                         div(classes = "card-header") {
-                                            h1(classes = "card-title mb-0") { +"確認メール送信完了" }
+                                            h1(classes = "card-title mb-0") { +(if (emailConfigured) "確認メール送信完了" else "仮登録完了") }
                                         }
                                         div(classes = "card-body") {
                                             div(classes = "alert alert-success") {
-                                                +"確認メールを ${result.email} に送信しました。メール内のリンクをクリックして登録を完了してください。"
+                                                if (emailConfigured) {
+                                                    +"確認メールを ${result.email} に送信しました。メール内のリンクをクリックして登録を完了してください。"
+                                                } else {
+                                                    +"メール送信の設定がないため、確認メールは送っていません。下のリンクから登録を完了してください。"
+                                                }
                                             }
-                                            p { +"メールが届かない場合は、迷惑メールフォルダを確認してください。" }
+                                            if (emailConfigured) {
+                                                p { +"メールが届かない場合は、迷惑メールフォルダを確認してください。" }
+                                            } else {
+                                                p {
+                                                    a(href = "/verify-email?token=${result.token}") { +"登録を完了する" }
+                                                }
+                                            }
                                             a(href = "/login", classes = "btn btn-primary") { +"ログイン画面へ" }
                                         }
                                     }

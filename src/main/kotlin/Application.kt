@@ -4,6 +4,7 @@ import io.ktor.server.application.*
 import io.ktor.server.sessions.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.http.*
+import io.ktor.http.content.OutgoingContent
 import com.opendronediary.database.DatabaseConfig
 import utils.ErrorPageHelper
 
@@ -36,35 +37,53 @@ fun Application.configureStatusPages() {
         }
         
         // Handle specific HTTP status codes
-        status(HttpStatusCode.InternalServerError) { call, status ->
-            ErrorPageHelper.respondWithSystemError(call)
+        status(HttpStatusCode.InternalServerError) { status ->
+            if (content.isEmptyErrorBody()) {
+                ErrorPageHelper.respondWithSystemError(call)
+            }
         }
-        
-        status(HttpStatusCode.BadRequest) { call, status ->
-            ErrorPageHelper.respondWithErrorPage(
-                call,
-                status,
-                "リクエストエラー", 
-                "リクエストが正しくありません。入力内容を確認してください。"
-            )
+
+        // ルートが既に説明付きの本文を返している場合は置き換えない。
+        // 置き換えると、画像認証失敗などもすべて「リクエストエラー」になる。
+        status(HttpStatusCode.BadRequest) { status ->
+            if (content.isEmptyErrorBody()) {
+                ErrorPageHelper.respondWithErrorPage(
+                    call,
+                    status,
+                    "リクエストエラー",
+                    "リクエストが正しくありません。入力内容を確認してください。"
+                )
+            }
         }
-        
-        status(HttpStatusCode.NotFound) { call, status ->
-            ErrorPageHelper.respondWithErrorPage(
-                call,
-                status,
-                "ページが見つかりません",
-                "お探しのページは存在しません。URLを確認してください。"
-            )
+
+        status(HttpStatusCode.NotFound) { status ->
+            if (content.isEmptyErrorBody()) {
+                ErrorPageHelper.respondWithErrorPage(
+                    call,
+                    status,
+                    "ページが見つかりません",
+                    "お探しのページは存在しません。URLを確認してください。"
+                )
+            }
         }
-        
-        status(HttpStatusCode.Forbidden) { call, status ->
-            ErrorPageHelper.respondWithErrorPage(
-                call,
-                status,
-                "アクセス権限がありません",
-                "このページにアクセスする権限がありません。"
-            )
+
+        status(HttpStatusCode.Forbidden) { status ->
+            if (content.isEmptyErrorBody()) {
+                ErrorPageHelper.respondWithErrorPage(
+                    call,
+                    status,
+                    "アクセス権限がありません",
+                    "このページにアクセスする権限がありません。"
+                )
+            }
         }
+    }
+}
+
+private fun OutgoingContent.isEmptyErrorBody(): Boolean {
+    return when (this) {
+        is OutgoingContent.NoContent -> true
+        is OutgoingContent.ByteArrayContent -> bytes().isEmpty()
+        else -> contentLength == 0L
     }
 }

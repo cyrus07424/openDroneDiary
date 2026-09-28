@@ -15,8 +15,12 @@ class EmailService {
     private val smtpUseSSL = System.getenv("SMTP_USE_SSL")?.toBoolean() ?: false
     private val baseUrl = System.getenv("BASE_URL") ?: "https://opendronediary.herokuapp.com"
     
+    fun isConfigured(): Boolean {
+        return !smtpHost.isNullOrEmpty() && !smtpUsername.isNullOrEmpty() && !smtpPassword.isNullOrEmpty()
+    }
+
     private fun createMailSession(): Session? {
-        if (smtpHost.isNullOrEmpty() || smtpUsername.isNullOrEmpty() || smtpPassword.isNullOrEmpty()) {
+        if (!isConfigured()) {
             println("SMTP configuration not complete, skipping email send")
             return null
         }
