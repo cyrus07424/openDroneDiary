@@ -574,6 +574,124 @@ fun HEAD.bootstrapHead(pageTitle: String, includeSEO: Boolean = false) {
     
     link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css")
     script(src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js") { }
+    style {
+        unsafe {
+            +"""
+            :root {
+                color-scheme: light;
+                --bs-primary: #24734f;
+                --bs-primary-rgb: 36, 115, 79;
+                --app-ink: #1e3028;
+                --app-muted: #68786f;
+                --app-surface: #ffffff;
+                --app-canvas: #f3f7f4;
+                --app-border: #e1eae4;
+            }
+
+            body {
+                color: var(--app-ink);
+                background:
+                    radial-gradient(ellipse at 8% 0%, rgba(210, 233, 216, .48), transparent 32rem),
+                    var(--app-canvas);
+                font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                line-height: 1.6;
+            }
+
+            h1, h2, h3, h4, h5, h6 {
+                color: var(--app-ink);
+                letter-spacing: -.025em;
+            }
+
+            .card {
+                border: 1px solid var(--app-border);
+                border-radius: 1rem;
+                background: var(--app-surface);
+                box-shadow: 0 8px 24px rgba(29, 63, 43, .045);
+            }
+
+            .card-header {
+                padding: 1rem 1.25rem;
+                border-bottom-color: var(--app-border);
+                border-radius: 1rem 1rem 0 0 !important;
+                background: #fbfdfb;
+            }
+
+            .card-body {
+                padding: 1.25rem;
+            }
+
+            .btn {
+                border-radius: .65rem;
+                font-weight: 600;
+                transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+            }
+
+            .btn:hover {
+                transform: translateY(-1px);
+            }
+
+            .btn-primary, .btn-success {
+                border-color: #24734f;
+                background-color: #24734f;
+            }
+
+            .btn-primary:hover, .btn-success:hover {
+                border-color: #1d5e40;
+                background-color: #1d5e40;
+            }
+
+            .form-control, .form-select {
+                min-height: 2.75rem;
+                border-color: #d6e1d9;
+                border-radius: .65rem;
+            }
+
+            .form-control:focus, .form-select:focus {
+                border-color: #63a47d;
+                box-shadow: 0 0 0 .2rem rgba(36, 115, 79, .14);
+            }
+
+            .table > :not(caption) > * > * {
+                padding: .8rem .75rem;
+                border-bottom-color: #e8eee9;
+            }
+
+            .table thead th {
+                color: #53645a;
+                font-size: .82rem;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+
+            .text-muted {
+                color: var(--app-muted) !important;
+            }
+
+            a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+                outline: 3px solid rgba(36, 115, 79, .45);
+                outline-offset: 2px;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                *, *::before, *::after {
+                    scroll-behavior: auto !important;
+                    transition-duration: .01ms !important;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .card-body {
+                    padding: 1rem;
+                }
+
+                .container {
+                    padding-right: 1rem;
+                    padding-left: 1rem;
+                }
+            }
+            """
+        }
+    }
     addGTMHeadScript()
 }
 
@@ -592,25 +710,29 @@ fun Route.configureTopAndAuthRouting(
                 div(classes = "container mt-5") {
                     div(classes = "row justify-content-center") {
                         div(classes = "col-md-8") {
-                            div(classes = "card") {
-                                div(classes = "card-header") {
-                                    h1(classes = "card-title mb-0") { +"🛩️ OpenDroneDiary 🚁" }
+                            div(classes = "card overflow-hidden") {
+                                div(classes = "card-header px-4 py-4") {
+                                    p(classes = "text-success fw-semibold small text-uppercase mb-2") { +"FLIGHT & AIRCRAFT LOGBOOK" }
+                                    h1(classes = "card-title h2 mb-2") { +"OpenDroneDiary" }
+                                    p(classes = "text-muted mb-0") { +"ドローンの飛行記録・点検・機体情報を、ひとつの場所で管理できます。" }
                                 }
-                                div(classes = "card-body") {
+                                div(classes = "card-body p-4") {
                                     if (session != null) {
-                                        div(classes = "alert alert-success") { +"ログイン中: ${session.username}" }
-                                        div(classes = "d-grid gap-2") {
-                                            a(href = "/dashboard", classes = "btn btn-success") { +"ダッシュボード" }
-                                            a(href = "/flightlogs/ui", classes = "btn btn-primary") { +"飛行記録一覧へ" }
-                                            a(href = "/aircraft/ui", classes = "btn btn-info") { +"機体台帳" }
-                                            a(href = "/pilots/ui", classes = "btn btn-info") { +"パイロット管理" }
-                                            a(href = "/dailyinspections/ui", classes = "btn btn-primary") { +"日常点検記録一覧へ" }
-                                            a(href = "/maintenanceinspections/ui", classes = "btn btn-primary") { +"点検整備記録一覧へ" }
-                                            a(href = "/logout", classes = "btn btn-outline-secondary") { +"ログアウト" }
+                                        div(classes = "alert alert-success border-0") { +"${session.username} さん、ログイン中です。" }
+                                        div(classes = "d-flex flex-wrap gap-2") {
+                                            a(href = "/dashboard", classes = "btn btn-primary") { +"ダッシュボードを開く" }
+                                            a(href = "/flightlogs/ui", classes = "btn btn-outline-primary") { +"飛行記録" }
+                                            a(href = "/dailyinspections/ui", classes = "btn btn-outline-primary") { +"日常点検" }
+                                            a(href = "/maintenanceinspections/ui", classes = "btn btn-outline-primary") { +"点検整備" }
+                                            a(href = "/aircraft/ui", classes = "btn btn-outline-secondary") { +"機体台帳" }
+                                            a(href = "/pilots/ui", classes = "btn btn-outline-secondary") { +"パイロット管理" }
+                                        }
+                                        div(classes = "mt-3") {
+                                            a(href = "/logout", classes = "link-secondary small") { +"ログアウト" }
                                         }
                                     } else {
-                                        p(classes = "card-text") { +"ドローンの飛行日誌を管理するためのオープンソースのツールです。" }
-                                        div(classes = "d-grid gap-2") {
+                                        p(classes = "card-text text-muted mb-4") { +"飛行後の記録から定期点検の確認まで、日々の運航をシンプルに整理しましょう。" }
+                                        div(classes = "d-flex flex-wrap gap-2") {
                                             a(href = "/login", classes = "btn btn-primary") { +"ログイン" }
                                             a(href = "/register", classes = "btn btn-outline-primary") { +"ユーザー登録" }
                                         }

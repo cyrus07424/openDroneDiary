@@ -64,15 +64,34 @@ fun Route.configureDashboardRouting(
             body(classes = "d-flex flex-column min-vh-100") {
                 addGTMBodyScript()
                 div(classes = "container mt-4 mb-5") {
-                    div(classes = "d-flex justify-content-between align-items-center mb-3") {
-                        h1(classes = "h3 mb-0") { +"飛行日誌ダッシュボード" }
+                    div(classes = "d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4") {
                         div {
+                            p(classes = "text-success fw-semibold small text-uppercase mb-1") { +"OpenDroneDiary" }
+                            h1(classes = "h3 mb-0") { +"飛行日誌ダッシュボード" }
+                        }
+                        div(classes = "d-flex flex-wrap gap-2") {
                             a(href = "/", classes = "btn btn-outline-secondary btn-sm me-2") { +"トップ" }
                             a(href = "/flightlogs/export.csv", classes = "btn btn-outline-success btn-sm") { +"飛行記録CSV" }
                         }
                     }
-                    div(classes = "alert alert-light border") {
+                    div(classes = "alert alert-success border-0 mb-4") {
                         +"特定飛行では、飛行記録・日常点検記録・点検整備記録を機体ごとに記載し、飛行時に携行します（航空法第132条の89）。電子データでもかまいません。"
+                    }
+                    div(classes = "card mb-4") {
+                        div(classes = "card-body") {
+                            div(classes = "d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3") {
+                                div {
+                                    h2(classes = "h5 mb-1") { +"すぐに記録する" }
+                                    p(classes = "text-muted small mb-0") { +"飛行後の記録や、飛行前の点検をすぐに追加できます。" }
+                                }
+                            }
+                            div(classes = "d-flex flex-wrap gap-2") {
+                                a(href = "/flightlogs/ui", classes = "btn btn-primary") { +"＋ 飛行記録" }
+                                a(href = "/dailyinspections/ui", classes = "btn btn-outline-primary") { +"日常点検" }
+                                a(href = "/maintenanceinspections/ui", classes = "btn btn-outline-primary") { +"点検整備" }
+                                a(href = "/aircraft/ui", classes = "btn btn-outline-secondary") { +"機体台帳" }
+                            }
+                        }
                     }
                     div(classes = "row g-3 mb-4") {
                         summaryCard("機体", aircraft.size.toString(), "台帳")
@@ -179,10 +198,10 @@ fun Route.configureDashboardRouting(
 
 private fun kotlinx.html.DIV.summaryCard(title: String, value: String, detail: String) {
     div(classes = "col-md-3") {
-        div(classes = "card h-100") {
+        div(classes = "card h-100 summary-card") {
             div(classes = "card-body") {
-                h5(classes = "card-title text-muted") { +title }
-                p(classes = "display-6 mb-0") { +value }
+                h5(classes = "card-title text-muted small fw-semibold mb-2") { +title }
+                p(classes = "display-6 fw-semibold mb-1") { +value }
                 small(classes = "text-muted") { +detail }
             }
         }
