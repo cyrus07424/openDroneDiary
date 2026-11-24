@@ -56,7 +56,7 @@ class UserService(private val repository: UserRepository) {
     }
     
     fun loginByEmail(email: String, password: String): User? {
-        val user = repository.findByEmail(email) ?: return null
+        val user = repository.findByEmail(email.trim().lowercase()) ?: return null
         return if (verifyPassword(password, user.passwordHash)) user else null
     }
     
