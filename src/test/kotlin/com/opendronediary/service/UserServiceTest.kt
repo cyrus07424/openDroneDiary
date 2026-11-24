@@ -126,6 +126,9 @@ class UserServiceTest {
         assertNotNull(loginByEmail, "Email-based login should succeed")
         assertEquals(user.username, loginByEmail.username)
         assertEquals(user.email, loginByEmail.email)
+
+        assertEquals(user.id, userService.loginByEmail("$uniqueEmail ", strongPassword)?.id)
+        assertEquals(user.id, userService.loginByEmail("  ${uniqueEmail.uppercase()}  ", strongPassword)?.id)
         
         // Test email-based login with wrong password
         val loginByEmailWrongPwd = userService.loginByEmail(uniqueEmail, "wrongPassword")
@@ -134,6 +137,32 @@ class UserServiceTest {
         // Test email-based login with non-existent email
         val loginNonExistentEmail = userService.loginByEmail("nonexistent@example.com", strongPassword)
         assertNull(loginNonExistentEmail, "Email-based login should fail with non-existent email")
+    }
+
+    @Test
+    fun testEmailLookupWithMixedCaseStoredEmail() {
+        DatabaseConfig.initDatabase()
+
+        val userService = UserService(UserRepository())
+        val strongPassword = "MyEmailL0gin!T3st456"
+        val suffix = System.currentTimeMillis()
+        val email = "MixedCase_$suffix@Example.COM"
+        val registration = userService.register("mixeduser_$suffix", strongPassword, email)
+        assertTrue(registration is RegisterResult.PendingVerification)
+        val confirmation = userService.confirmRegistration(registration.token)
+        assertTrue(confirmation is ConfirmRegistrationResult.Success)
+
+        assertEquals(confirmation.user.id, userService.loginByEmail(email.lowercase(), strongPassword)?.id)
+        assertEquals(confirmation.user.id, userService.loginByEmail(email.uppercase(), strongPassword)?.id)
+        assertNull(userService.loginByEmail(email.lowercase(), "wrongPassword"))
+
+        val duplicate = userService.register("otheruser_$suffix", strongPassword, email.lowercase())
+        assertTrue(duplicate is RegisterResult.Failure)
+        assertEquals(RegisterField.EMAIL, duplicate.field)
+
+        val token = userService.requestPasswordReset(email.lowercase())
+        assertNotNull(token)
+        assertTrue(userService.resetPassword(token, "MyNewSecur3P@ssw0rd456!") is ResetPasswordResult.Success)
     }
     
     @Test

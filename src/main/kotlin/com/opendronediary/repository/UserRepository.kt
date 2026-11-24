@@ -18,7 +18,7 @@ class UserRepository {
     }
 
     fun findByEmail(email: String): User? = transaction {
-        Users.select { Users.email eq email }
+        Users.select { Users.email.lowerCase() eq email.lowercase() }
             .map { User(it[Users.id], it[Users.username], it[Users.passwordHash], it[Users.email], it[Users.createdAt], it[Users.updatedAt]) }
             .singleOrNull()
     }
