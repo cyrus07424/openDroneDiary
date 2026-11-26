@@ -59,6 +59,7 @@ fun Route.configureDailyInspectionRouting(
                                                             th { +"実施者" }
                                                             th { +"機体" }
                                                             th { +"点検結果" }
+                                                            th { +"特記事項" }
                                                             th(classes = "text-center") { +"操作" }
                                                         }
                                                     }
@@ -79,6 +80,9 @@ fun Route.configureDailyInspectionRouting(
                                                                     } else {
                                                                         +record.inspectionResult
                                                                     }
+                                                                }
+                                                                td {
+                                                                    +(record.inspectionResult.ifBlank { "—" })
                                                                 }
                                                                 td(classes = "text-center") {
                                                                     a(href = "/dailyinspections/ui/${record.id}", classes = "btn btn-sm btn-outline-primary me-2") { +"編集" }
