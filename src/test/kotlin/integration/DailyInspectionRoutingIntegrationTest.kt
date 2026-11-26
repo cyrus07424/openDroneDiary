@@ -1,6 +1,7 @@
 package integration
 
 import com.example.module
+import com.opendronediary.database.DatabaseConfig
 import com.opendronediary.model.DailyInspectionRecord
 import com.opendronediary.model.User
 import com.opendronediary.model.UserSession
@@ -21,6 +22,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class DailyInspectionRoutingIntegrationTest {
+    init {
+        DatabaseConfig.initDatabase()
+    }
 
     @Test
     fun `daily inspection list renders remarks separately when checklist values exist`() = testApplication {
