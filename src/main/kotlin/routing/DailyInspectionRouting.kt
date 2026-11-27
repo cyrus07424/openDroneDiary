@@ -38,6 +38,7 @@ fun Route.configureDailyInspectionRouting(
                 body {
                     addGTMBodyScript()
                     div(classes = "container mt-5") {
+                        successAlert(call.request.queryParameters["success"])
                         div(classes = "row") {
                             div(classes = "col-12") {
                                 div(classes = "card") {
@@ -266,7 +267,7 @@ fun Route.configureDailyInspectionRouting(
                     if (id != null && inspectionDate.isNotBlank() && location.isNotBlank() && inspectorName.isNotBlank()) {
                         val updated = dailyInspectionRecordService.update(id, params.bindDailyInspection(id, session.userId), session.userId)
                         if (updated) {
-                            call.respondRedirect("/dailyinspections/ui")
+                            call.respondRedirect("/dailyinspections/ui?success=saved")
                         } else {
                             call.respond(HttpStatusCode.NotFound)
                         }
@@ -276,7 +277,7 @@ fun Route.configureDailyInspectionRouting(
                 }
                 "delete" -> {
                     if (id != null && dailyInspectionRecordService.delete(id, session.userId)) {
-                        call.respondRedirect("/dailyinspections/ui")
+                        call.respondRedirect("/dailyinspections/ui?success=deleted")
                     } else {
                         call.respond(HttpStatusCode.NotFound)
                     }
@@ -374,7 +375,7 @@ fun Route.configureDailyInspectionRouting(
                 val location = params["location"] ?: ""
                 val inspectorName = params["inspectorName"] ?: ""
                 val created = dailyInspectionRecordService.add(params.bindDailyInspection(0, session.userId))
-                call.respondRedirect("/dailyinspections/ui")
+                call.respondRedirect("/dailyinspections/ui?success=saved")
             } else {
                 val record = call.receive<DailyInspectionRecord>()
                 val created = dailyInspectionRecordService.add(record.copy(userId = session.userId))

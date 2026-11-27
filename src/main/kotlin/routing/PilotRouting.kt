@@ -61,7 +61,7 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                     userId = session.userId,
                     skillCertificateNumber = params["skillCertificateNumber"].blankToNull()
                 ))
-                call.respondRedirect("/pilots/ui")
+                call.respondRedirect("/pilots/ui?success=saved")
             } else {
                 val pilot = call.receive<Pilot>()
                 val created = pilotService.add(pilot.copy(userId = session.userId))
@@ -122,6 +122,7 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                         }
                     }
                     div(classes = "container mt-4") {
+                        successAlert(call.request.queryParameters["success"])
                         div(classes = "row") {
                             div(classes = "col-12") {
                                 div(classes = "card") {
@@ -320,7 +321,7 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                             skillCertificateNumber = params["skillCertificateNumber"].blankToNull()
                         ), session.userId)
                         if (updated) {
-                            call.respondRedirect("/pilots/ui")
+                            call.respondRedirect("/pilots/ui?success=saved")
                         } else {
                             call.respond(HttpStatusCode.NotFound)
                         }
@@ -330,7 +331,7 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                 }
                 "delete" -> {
                     if (id != null && pilotService.delete(id, session.userId)) {
-                        call.respondRedirect("/pilots/ui")
+                        call.respondRedirect("/pilots/ui?success=deleted")
                     } else {
                         call.respond(HttpStatusCode.NotFound)
                     }
@@ -362,7 +363,7 @@ fun Route.configurePilotRouting(pilotService: PilotService) {
                     userId = session.userId,
                     skillCertificateNumber = params["skillCertificateNumber"].blankToNull()
                 ))
-                call.respondRedirect("/pilots/ui")
+                call.respondRedirect("/pilots/ui?success=saved")
             } else {
                 val pilot = call.receive<Pilot>()
                 val created = pilotService.add(pilot.copy(userId = session.userId))

@@ -38,6 +38,7 @@ fun Route.configureMaintenanceInspectionRouting(
                 body {
                     addGTMBodyScript()
                     div(classes = "container mt-5") {
+                        successAlert(call.request.queryParameters["success"])
                         div(classes = "row") {
                             div(classes = "col-12") {
                                 div(classes = "card") {
@@ -271,7 +272,7 @@ fun Route.configureMaintenanceInspectionRouting(
                         inspectorName.isNotBlank() && contentAndReason.isNotBlank()) {
                         val updated = maintenanceInspectionRecordService.update(id, params.toMaintenanceRecord(id, session.userId, aircraftService, flightLogService), session.userId)
                         if (updated) {
-                            call.respondRedirect("/maintenanceinspections/ui")
+                            call.respondRedirect("/maintenanceinspections/ui?success=saved")
                         } else {
                             call.respond(HttpStatusCode.NotFound)
                         }
@@ -281,7 +282,7 @@ fun Route.configureMaintenanceInspectionRouting(
                 }
                 "delete" -> {
                     if (id != null && maintenanceInspectionRecordService.delete(id, session.userId)) {
-                        call.respondRedirect("/maintenanceinspections/ui")
+                        call.respondRedirect("/maintenanceinspections/ui?success=deleted")
                     } else {
                         call.respond(HttpStatusCode.NotFound)
                     }
@@ -381,7 +382,7 @@ fun Route.configureMaintenanceInspectionRouting(
                 val inspectorName = params["inspectorName"] ?: ""
                 val contentAndReason = params["contentAndReason"] ?: ""
                 val created = maintenanceInspectionRecordService.add(params.toMaintenanceRecord(0, session.userId, aircraftService, flightLogService))
-                call.respondRedirect("/maintenanceinspections/ui")
+                call.respondRedirect("/maintenanceinspections/ui?success=saved")
             } else {
                 val record = call.receive<MaintenanceInspectionRecord>()
                 val created = maintenanceInspectionRecordService.add(record.copy(userId = session.userId))
