@@ -253,6 +253,7 @@ fun Route.configureFlightLogRouting(
                         }
                     }
                     div(classes = "container mt-4") {
+                        successAlert(call.request.queryParameters["success"])
                         div(classes = "row") {
                             div(classes = "col-12") {
                                 div(classes = "card") {
@@ -1949,7 +1950,7 @@ fun Route.configureFlightLogRouting(
                     landingLongitude = landingLongitude
                         ).bindFlightCompliance(params, pilotService, session.userId), session.userId)
                         if (updated) {
-                            call.respondRedirect("/flightlogs/ui")
+                            call.respondRedirect("/flightlogs/ui?success=saved")
                         } else {
                             call.respond(HttpStatusCode.NotFound)
                         }
@@ -1959,7 +1960,7 @@ fun Route.configureFlightLogRouting(
                 }
                 "delete" -> {
                     if (id != null && flightLogService.delete(id, session.userId)) {
-                        call.respondRedirect("/flightlogs/ui")
+                        call.respondRedirect("/flightlogs/ui?success=deleted")
                     } else {
                         call.respond(HttpStatusCode.NotFound)
                     }
@@ -2047,7 +2048,7 @@ fun Route.configureFlightLogRouting(
                     landingLatitude = landingLatitude,
                     landingLongitude = landingLongitude
                 ).bindFlightCompliance(params, pilotService, session.userId))
-                call.respondRedirect("/flightlogs/ui")
+                call.respondRedirect("/flightlogs/ui?success=saved")
             } else {
                 val flightLog = call.receive<FlightLog>()
                 val created = flightLogService.add(flightLog.copy(userId = session.userId))

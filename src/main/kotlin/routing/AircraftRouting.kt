@@ -88,6 +88,7 @@ fun Route.configureAircraftRouting(
                 body(classes = "d-flex flex-column min-vh-100") {
                     addGTMBodyScript()
                     div(classes = "container mt-4") {
+                        successAlert(call.request.queryParameters["success"])
                         div(classes = "card") {
                             div(classes = "card-header d-flex justify-content-between align-items-center") {
                                 h1(classes = "h4 mb-0") { +"機体台帳" }
@@ -311,7 +312,7 @@ fun Route.configureAircraftRouting(
             when (params["_method"]) {
                 "delete" -> {
                     if (id != null && aircraftService.delete(id, session.userId)) {
-                        call.respondRedirect("/aircraft/ui")
+                        call.respondRedirect("/aircraft/ui?success=deleted")
                     } else {
                         call.respond(HttpStatusCode.NotFound)
                     }
@@ -323,7 +324,7 @@ fun Route.configureAircraftRouting(
                     }
                     try {
                         val updated = aircraftService.update(id, params.toAircraft(session.userId), session.userId)
-                        if (updated) call.respondRedirect("/aircraft/ui") else call.respond(HttpStatusCode.NotFound)
+                        if (updated) call.respondRedirect("/aircraft/ui?success=saved") else call.respond(HttpStatusCode.NotFound)
                     } catch (e: DuplicateRegistrationException) {
                         call.respond(HttpStatusCode.BadRequest, e.message ?: "登録記号が重複しています")
                     }
@@ -345,7 +346,7 @@ fun Route.configureAircraftRouting(
                         }
                         try {
                             aircraftService.add(params.toAircraft(session.userId))
-                            call.respondRedirect("/aircraft/ui")
+                            call.respondRedirect("/aircraft/ui?success=saved")
             } catch (e: DuplicateRegistrationException) {
                 call.respond(HttpStatusCode.BadRequest, e.message ?: "登録記号が重複しています")
             }
