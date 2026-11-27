@@ -52,7 +52,7 @@ class SuccessFeedbackIntegrationTest {
         val cookie = client.get("/test-feedback-session").headers[HttpHeaders.SetCookie]
             ?.substringBefore(";") ?: error("セッションCookieが設定されませんでした")
 
-        data class Case(val path: String, val values: Map<String, String>, val id: () -> Int)
+        data class Case(val path: String, val values: Map<String, String>, val createPath: String = path, val id: () -> Int)
         val cases = listOf(
             Case("/aircraft/ui", mapOf("registrationSymbol" to "JU$stamp")) {
                 transaction { AircraftRepository().getAllByUserId(user.id).single().id }
@@ -60,13 +60,13 @@ class SuccessFeedbackIntegrationTest {
             Case("/pilots/ui", mapOf("name" to "操縦者")) {
                 transaction { PilotRepository().getAllByUserId(user.id).single().id }
             },
-            Case("/dailyinspections/ui", mapOf("inspectionDate" to "2026-11-26", "location" to "場所", "inspectorName" to "点検者")) {
+            Case("/dailyinspections/ui", mapOf("inspectionDate" to "2026-11-26", "location" to "場所", "inspectorName" to "点検者"), createPath = "/dailyinspections") {
                 DailyInspectionRecordRepository().getAllByUserId(user.id).single().id
             },
             Case("/flightlogs/ui", mapOf("flightDate" to "2026-11-26", "pilotNameText" to "操縦者")) {
                 FlightLogRepository().getAllByUserId(user.id).single().id
             },
-            Case("/maintenanceinspections/ui", mapOf("inspectionDate" to "2026-11-26", "location" to "場所", "inspectorName" to "点検者", "contentAndReason" to "整備")) {
+            Case("/maintenanceinspections/ui", mapOf("inspectionDate" to "2026-11-26", "location" to "場所", "inspectorName" to "点検者", "contentAndReason" to "整備"), createPath = "/maintenanceinspections") {
                 MaintenanceInspectionRecordRepository().getAllByUserId(user.id).single().id
             }
         )
@@ -102,7 +102,7 @@ class SuccessFeedbackIntegrationTest {
                 assertTrue(list.bodyAsText().contains(message))
             }
 
-            assertRedirectAndMessage(submit(case.path, case.values), "saved", "保存しました")
+            assertRedirectAndMessage(submit(case.createPath, case.values), "saved", "保存しました")
             val id = case.id()
             assertRedirectAndMessage(submit("${case.path}/$id", case.values + ("_method" to "put")), "saved", "保存しました")
             assertRedirectAndMessage(submit("${case.path}/$id", mapOf("_method" to "delete")), "deleted", "削除しました")
