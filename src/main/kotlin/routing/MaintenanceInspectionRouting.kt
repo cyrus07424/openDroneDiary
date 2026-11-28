@@ -44,7 +44,10 @@ fun Route.configureMaintenanceInspectionRouting(
                                 div(classes = "card") {
                                     div(classes = "card-header d-flex justify-content-between align-items-center") {
                                         h1(classes = "card-title mb-0") { +"点検整備記録一覧" }
-                                        a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
+                                        div {
+                                            a(href = "/maintenanceinspections/export.csv", classes = "btn btn-outline-success btn-sm me-2") { +"CSV" }
+                                            a(href = "/", classes = "btn btn-outline-primary btn-sm") { +"トップへ" }
+                                        }
                                     }
                                     div(classes = "card-body") {
                                         if (maintenanceInspectionRecords.isEmpty()) {
@@ -346,6 +349,18 @@ fun Route.configureMaintenanceInspectionRouting(
     
     // Maintenance Inspection Record routes
     route("/maintenanceinspections") {
+        get("/export.csv") {
+            val session = call.sessions.get<UserSession>()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized)
+                return@get
+            }
+            val records = maintenanceInspectionRecordService.getAllByUserId(session.userId)
+            val aircraftById = aircraftService.getAllByUserId(session.userId).associateBy { it.id }
+            val csv = utils.MaintenanceInspectionCsvExporter.export(records, aircraftById)
+            call.response.header(HttpHeaders.ContentDisposition, "attachment; filename=\"maintenance-inspections.csv\"")
+            call.respondText(csv, ContentType.Text.CSV.withCharset(Charsets.UTF_8))
+        }
         get {
             val session = call.sessions.get<UserSession>()
             if (session == null) {
